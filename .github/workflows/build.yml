@@ -1,0 +1,51 @@
+name: Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          install: >-
+            base-devel
+            git
+            unzip
+            make
+            mingw-w64-i686-toolchain
+            mingw-w64-x86_64-toolchain
+            mingw-w64-i686-glew
+            mingw-w64-x86_64-glew
+            mingw-w64-i686-SDL2
+            mingw-w64-i686-SDL
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL
+            python
+
+      - name: Add MSYS2 to Path
+        run: echo "C:\msys64\usr\bin" >> $GITHUB_PATH
+        
+      - name: Build Project
+        shell: msys2 {0}
+        run: |
+          make -j$(nproc) NOEXTRACT=1
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm64coopdx-build
+          path: |
+            build/*

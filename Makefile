@@ -34,6 +34,9 @@ OSX_BUILD ?= 0
 TARGET_ARCH ?= native
 TARGET_BITS ?= 0
 
+# For android's github actions
+TARGET_ANDROID_ARCH ?= arm64-v8a
+
 # Disable texture fixes by default (helps with them purists)
 TEXTURE_FIX ?= 0
 # Enable level texture enhancements by default (Castle Grounds and Castle Courtyard recolorable texture hills)
@@ -1004,17 +1007,8 @@ else ifeq ($(TARGET_RPI),1)
 else ifeq ($(TARGET_BBB),1)
   LDFLAGS := $(OPT_FLAGS) -lm $(BACKEND_LDFLAGS) -no-pie
 else ifeq ($(TARGET_ANDROID),1)
-  ifneq ($(shell uname -m | grep "i.86"),)
-    ARCH_APK := x86
-  else ifeq ($(shell uname -m),x86_64)
-    ARCH_APK := x86_64
-  else ifeq ($(shell getconf LONG_BIT),64)
-    ARCH_APK := arm64-v8a
-  else
-    ARCH_APK := armeabi-v7a
-  endif
   CFLAGS  += -fPIC
-  LDFLAGS := -L ./platform/android/android/lib/$(ARCH_APK)/ -lm $(BACKEND_LDFLAGS) -shared
+  LDFLAGS := -L ./platform/android/android/lib/$(TARGET_ANDROID_ARCH)/ -lm $(BACKEND_LDFLAGS) -shared
 else ifeq ($(OSX_BUILD),1)
   LDFLAGS := -lm $(BACKEND_LDFLAGS) -lpthread
 else
@@ -1709,8 +1703,8 @@ $(ZIP_UNCOMPRESSED): $(EXE) $(APK_FILES)
 	cp -r lang $(BUILD_DIR)/platform/android/android/assets/ && \
   cp -r palettes $(BUILD_DIR)/platform/android/android/assets/ && \
   cp -r dynos $(BUILD_DIR)/platform/android/android/assets/ && \
-	cp $(PREFIX)/lib/libc++_shared.so $(BUILD_DIR)/platform/android/android/lib/$(ARCH_APK)/ && \
-	cp $(EXE) $(BUILD_DIR)/platform/android/android/lib/$(ARCH_APK)/ && \
+	cp $(PREFIX)/lib/libc++_shared.so $(BUILD_DIR)/platform/android/android/lib/$(TARGET_ANDROID_ARCH)/ && \
+	cp $(EXE) $(BUILD_DIR)/platform/android/android/lib/$(TARGET_ANDROID_ARCH)/ && \
 	cd $(BUILD_DIR)/platform/android/android && \
 	zip -0 -r ../../../../../$@ ./* && \
 	cd - && \

@@ -1,0 +1,159 @@
+name: Build SM64CoopDX for Android in Termux
+
+on:
+  push:
+    branches:
+      - android
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04-arm
+    
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+
+      - name: Fix Permissions
+        run: |
+          sudo chmod -R 777 ${{ github.workspace }}
+
+      - name: Cache Android NDK
+        id: cache-ndk
+        uses: actions/cache@v4
+        with:
+          path: android-ndk-r26b
+          key: ndk-r26b
+
+      - name: Download and Extract Android NDK (if not cached)
+        if: steps.cache-ndk.outputs.cache-hit != 'true'
+        run: |
+          wget -q https://dl.google.com/android/repository/android-ndk-r26b-linux.zip
+          unzip -q android-ndk-r26b-linux.zip
+
+      - name: Run Termux in ARM Docker
+        run: |
+          docker run --rm --platform linux/arm64 \
+            --ulimit nofile=4096:4096 \
+            -v ${{ github.workspace }}:/workspace \
+            -v $PWD/android-ndk-r26b:/ndk \
+            -w /workspace \
+            termux/termux-docker:arm sh -c "
+              pkg update &&
+              apt-mark hold termux-exec &&
+              DEBIAN_FRONTEND=noninteractive apt-get upgrade -yq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" &&
+              
+              pkg install -y git wget make python zip clang binutils apksigner aapt libglvnd-dev &&
+              
+              mkdir -p /data/data/com.termux/files/usr/lib &&
+              cp /ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/34/libGLESv2.so /data/data/com.termux/files/usr/lib/ &&
+              cp /ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/34/libEGL.so /data/data/com.termux/files/usr/lib/ &&
+              
+              export CC=\"armv7a-linux-androideabi-clang\" &&
+              export CFLAGS=\"-DLUA_USE_LINUX -fPIC -I/data/data/com.termux/files/usr/include\" &&
+              export LDFLAGS=\"-L/data/data/com.termux/files/usr/lib -lGLESv2 -lEGL -ldl\" &&
+              export LIBRARY_PATH=\"/data/data/com.termux/files/usr/lib\" &&
+              export LD_LIBRARY_PATH=\"/data/data/com.termux/files/usr/lib\" &&
+              
+              ls -la /data/data/com.termux/files/usr/lib &&
+              
+              make -C lib/src/lua clean || true &&
+              make -C lib/src/lua -j$(nproc) linux || exit 1 &&
+              
+              make TARGET_ARCH=arm TARGET_ANDROID_ARCH=armeabi-v7a TARGET_ANDROID=1 NOEXTRACT=1 -j32
+              make TARGET_ARCH=arm TARGET_ANDROID_ARCH=armeabi-v7a TARGET_ANDROID=1 NOEXTRACT=1 -j32
+              make TARGET_ARCH=arm TARGET_ANDROID_ARCH=armeabi-v7a TARGET_ANDROID=1 NOEXTRACT=1 -j32
+
+              mv build/us_pc/sm64coopdx.apk sm64coopdx-arm.apk
+            "
+
+      - name: Upload APK (ARM)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm64coopdx-android-armeabi-v7a
+          path: sm64coopdx-arm.apk
+
+      - name: Reset all changes in the folder
+        run: |
+          # Delete all .o and .a files recursively in tools folder without error
+          sudo find tools -type f -name '*.o' -delete || true
+          sudo find tools -type f -name '*.a' -delete || true
+          # Reset all changes except for sm64coopdx-arm.apk
+          sudo git reset --hard HEAD
+          sudo git clean -fd -e 'android-ndk-r26b' -e 'sm64coopdx-arm.apk'
+
+          
+
+      - name: Run Termux in AARCH64 Docker
+        run: |
+          docker run --rm --platform linux/arm64 \
+            --ulimit nofile=4096:4096 \
+            -v ${{ github.workspace }}:/workspace \
+            -v $PWD/android-ndk-r26b:/ndk \
+            -w /workspace \
+            termux/termux-docker:aarch64 sh -c "
+              pkg update &&
+              apt-mark hold termux-exec &&
+              DEBIAN_FRONTEND=noninteractive apt-get upgrade -yq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" &&
+              
+              pkg install -y git wget make python zip clang binutils apksigner aapt libglvnd-dev &&
+              
+              mkdir -p /data/data/com.termux/files/usr/lib &&
+              cp /ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/34/libGLESv2.so /data/data/com.termux/files/usr/lib/ &&
+              cp /ndk/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/34/libEGL.so /data/data/com.termux/files/usr/lib/ &&
+              
+              export CC=\"aarch64-linux-android-clang\" &&
+              export CFLAGS=\"-DLUA_USE_LINUX -fPIC -I/data/data/com.termux/files/usr/include\" &&
+              export LDFLAGS=\"-L/data/data/com.termux/files/usr/lib -lGLESv2 -lEGL -ldl\" &&
+              export LIBRARY_PATH=\"/data/data/com.termux/files/usr/lib\" &&
+              export LD_LIBRARY_PATH=\"/data/data/com.termux/files/usr/lib\" &&
+              
+              ls -la /data/data/com.termux/files/usr/lib &&
+              
+              make -C lib/src/lua clean || true &&
+              make -C lib/src/lua -j$(nproc) linux || exit 1 &&
+              
+              make TARGET_ARCH=arm64 TARGET_ANDROID_ARCH=arm64-v8a TARGET_ANDROID=1 NOEXTRACT=1 -j32 && break || sleep 5
+
+              mv build/us_pc/sm64coopdx.apk sm64coopdx-arm64.apk
+
+              unzip -q sm64coopdx-arm64.apk -d arm64
+              unzip -q sm64coopdx-arm.apk -d arm
+
+              # Merge files from both APKs into one folder
+              mkdir merged_apk
+              cp -r arm64/* merged_apk/
+              cp -r arm/* merged_apk/
+              
+              # Remove any duplicates or conflicts
+              rm -rf merged_apk/META-INF
+
+              # Repack into zip
+              cd merged_apk
+              zip -0 -r ../sm64coopdx-universal.zip .
+              cd ..
+
+              # Align APK
+              zipalign -f -p 4 sm64coopdx-universal.zip sm64coopdx-universal-aligned.apk
+
+              # Sign APK
+              apksigner sign --cert platform/android/certificate.pem --key platform/android/key.pk8 sm64coopdx-universal-aligned.apk
+
+              # Rename as final APK
+              mv sm64coopdx-universal-aligned.apk sm64coopdx-universal.apk
+
+            "
+
+      - name: Upload APK (ARM64)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm64coopdx-android-arm64-v8a
+          path: sm64coopdx-arm64.apk
+
+      - name: Upload APK (Universal)
+        uses: actions/upload-artifact@v4
+        with:
+          name: sm64coopdx-universal
+          path: sm64coopdx-universal.apk

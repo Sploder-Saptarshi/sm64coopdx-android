@@ -72,8 +72,6 @@ sm64config.txt
 /actors/**/*.png
 /textures/**/*.png
 /assets/**/*.bin
-/sound/**/*.m64
-/sound/**/*.aiff
 /autogen/__pycache__
 !/levels/**/*custom*.png
 !/levels/**/*custom*/**/*.png
@@ -81,10 +79,7 @@ sm64config.txt
 !/actors/**/*custom*/**/*.png
 !/textures/**/*custom*.png
 !/textures/**/*custom*/**/*.png
-!/sound/**/*custom*.m64
-!/sound/**/*custom*/**/*.m64
-!/sound/**/*custom*.aiff
-!/sound/**/*custom*/**/*.aiff
+
 !/assets/**/*custom*.bin
 !/assets/**/*custom*/**/*.bin
 !/lib/discordsdk/*.*
@@ -102,9 +97,7 @@ tools/ido5.3_compiler/usr/lib/libc.so.1
 /.vs
 
 # custom sounds
-sound/samples/sfx_custom_luigi*/*.aiff
-sound/samples/sfx_custom_wario*/*.aiff
-sound/samples/sfx_custom_toad*/*.aiff
+
 
 # Android files
 !/textures/touchcontrols/*.png
