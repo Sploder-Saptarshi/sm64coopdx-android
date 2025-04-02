@@ -17,7 +17,9 @@
 #include "pc/lua/utils/smlua_misc_utils.h"
 #include "pc/lua/utils/smlua_camera_utils.h"
 #include "pc/mods/mods.h"
+#ifndef __ANDROID__
 #include "pc/crash_handler.h"
+#endif
 #include "pc/debuglog.h"
 #include "pc/pc_main.h"
 #include "pc/gfx/gfx_pc.h"
@@ -119,7 +121,9 @@ bool network_init(enum NetworkType inNetworkType, bool reconnecting) {
     }
 
     network_forget_all_reliable();
+    #ifndef __ANDROID__
     crash_handler_init();
+    #endif
 
     // set server settings
     gServerSettings.playerInteractions = configPlayerInteraction;
