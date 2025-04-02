@@ -1,3 +1,4 @@
+#ifndef __ANDROID__
 // Adapted from PeachyPeach's sm64pc-omm (now sm64ex-omm)
 #include "crash_handler.h"
 
@@ -193,8 +194,14 @@ enum
   REG_RSP,
 # define REG_RSP	REG_RSP
   REG_RIP,
+# define REG_RIP	REG_RIP
+  REG_EFL,
 # define REG_EFL	REG_EFL
   REG_CSGSFS,		/* Actually short cs, gs, fs, __pad0.  */
+# define REG_CSGSFS	REG_CSGSFS
+  REG_ERR,
+# define REG_ERR	REG_ERR
+  REG_TRAPNO,
 # define REG_TRAPNO	REG_TRAPNO
   REG_OLDMASK,
 # define REG_OLDMASK	REG_OLDMASK
@@ -824,3 +831,4 @@ void crash_handler_init(void) {
         tag++;
     }
 }
+#endif
