@@ -492,6 +492,8 @@ TOOLS_DIR := tools
 
 LIBLUA_DIR := lib/src/lua
 
+COOPNET_DIR := lib/src/coopnet
+
 LUA_PLATFORM := linux
 
 ZLIB_DIR := lib/src/zlib
@@ -526,6 +528,14 @@ ifeq ($(filter clean distclean print-%,$(MAKECMDGOALS)),)
     DUMMY != $(MAKE) -C $(LIBLUA_DIR) $(LUA_PLATFORM) >&2 || echo FAIL
     ifeq ($(DUMMY),FAIL)
       $(error Failed to build lua)
+    endif
+  endif
+
+  # Make coopnet
+  ifeq ($(TARGET_ANDROID),1)
+    DUMMY != $(MAKE) -C $(COOPNET_DIR) >&2 || echo FAIL
+    ifeq ($(DUMMY),FAIL)
+      $(error Failed to build coopnet)
     endif
   endif
 
