@@ -144,45 +144,198 @@ jobs:
                 path: ./build/us_pc/sm64coopdx-macos-intel.zip
 
     build-android:
-        if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build]') }}
-        runs-on: ubuntu-24.04-arm
-        container:
-          image: termux/termux-docker:aarch64
-          volumes: 
-              - /tmp/node20:/__e/node20
-        env:
-            ANDROID_ROOT: /system
-            ANDROID_DATA: /data
-            PREFIX: /data/data/com.termux/files/usr
-            HOME: /data/data/com.termux/files/home
-            PATH: /data/data/com.termux/files/usr/bin
-            TMPDIR: /data/data/com.termux/files/usr/tmp
-            LANG: en_US.UTF-8
-            TZ: UTC
-        steps:
-            - name: Install dependencies
-              run: |
-                  ln -sf ${PREFIX}/etc/termux/mirrors/default ${PREFIX}/etc/termux/chosen_mirrors
-                  /entrypoint.sh bash -c "yes | pkg upgrade -y"
-                  chmod -R o+x ${PREFIX}/bin
-                  /entrypoint.sh pkg install -y nodejs-lts
-                  ln -sf ${PREFIX}/bin /__e/node20/bin
+      if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build]') }}
+      strategy:
+        matrix:
+          include:
+            - runner: ubuntu-24.04
+              architecture: i686
+            - runner: ubuntu-24.04
+              architecture: x86_64
+            - runner: ubuntu-24.04-arm
+              architecture: arm
+            - runner: ubuntu-24.04-arm
+              architecture: aarch64
+      runs-on: ${{ matrix.runner }}
+      container:
+        image: termux/termux-docker:${{ matrix.architecture }}
+        volumes: 
+          - /tmp/node20:/__e/node20
+      env:
+        ANDROID_ROOT: /system
+        ANDROID_DATA: /data
+        PREFIX: /data/data/com.termux/files/usr
+        HOME: /data/data/com.termux/files/home
+        PATH: /data/data/com.termux/files/usr/bin
+        TMPDIR: /data/data/com.termux/files/usr/tmp
+        LANG: en_US.UTF-8
+        TZ: UTC
+      steps:
+        - name: Update package list
+          run: |
+            attempt=0
+            max_attempts=10
+            until [ $attempt -ge $max_attempts ]
+            do
+              echo "Attempt $((attempt+1)) of $max_attempts..."
+              /entrypoint.sh pkg install -y x11-repo && /entrypoint.sh pkg clean && /entrypoint.sh pkg update -y && break
+              attempt=$((attempt+1))
+              echo "Retrying in 5 seconds..."
+              /entrypoint.sh pkg clean
+              /entrypoint.sh pkg update -y
+              sleep 5
+              
+            done
+          # Optionally set a maximum time for the job to ensure it doesn't run indefinitely
+          timeout-minutes: 15
 
-            - name: Checkout repository
-              uses: actions/checkout@v4.2.2
+        - name: fix executable bit for all binaries in $PREFIX/bin for all users
+          run: chmod -R o+x ${PREFIX}/bin
+        - name: install bionic-libc nodejs to force compatibility with actions/checkout and actions/upload-artifact
+          run: |
+            attempt=0
+            max_attempts=10
+            until [ $attempt -ge $max_attempts ]; do
+              echo "Attempt $((attempt + 1)) of $max_attempts..."
 
-            - name: Reset permissions
-              run: chown -R 1000:1000 .
+              set +e # Disable immediate exit on failure
+              /entrypoint.sh apt-get install -y -o Dpkg::Options::="--force-confnew" openssl libc++ 
+              install_status=$?
+              
+              /entrypoint.sh pkg install -y nodejs-lts git
+              pkg_status=$?
 
-            - name: Copy ROM using actions secret
+              ln -sf ${PREFIX}/bin /__e/node20/bin
+              ln_status=$?
+
+              set -e # Re-enable to stop on failure outside retry block
+
+              if [ $install_status -eq 0 ] && [ $pkg_status -eq 0 ] && [ $ln_status -eq 0 ]; then
+                echo "Installation succeeded"
+                break
+              else
+                attempt=$((attempt + 1))
+                if [ $attempt -lt $max_attempts ]; then
+                  echo "Retrying in 5 seconds..."
+                  sleep 5
+                  /entrypoint.sh pkg clean
+                  /entrypoint.sh pkg update -y
+                else
+                  echo "Installation failed after $max_attempts attempts"
+                  exit 1
+                fi
+              fi
+            done
+
+          # Optionally set a maximum time for the job to ensure it doesn't run indefinitely
+          timeout-minutes: 15
+          
+        - name: Copy ROM using actions secret
               run: |
                 curl -L "${{ secrets.ROM }}" -o ./baserom.us.z64
 
-            - name: Build the game
-              run: /entrypoint.sh .github/build-android.sh
+        - name: Build
+          run: chmod 777 -R . && /entrypoint.sh git config --global safe.directory '*' && /entrypoint.sh git clone https://github.com/${GITHUB_REPOSITORY}.git . && /entrypoint.sh git checkout "${GITHUB_REF_NAME}" && chmod +x .github/build-sm64coopdx-in-termux-docker.sh && /entrypoint.sh .github/build-sm64coopdx-in-termux-docker.sh ${{ matrix.architecture }}
 
-            - name: Upload artifact
-              uses: actions/upload-artifact@v4
-              with:
-                name: sm64coopdx-android
-                path: ./build/us_pc/sm64coopdx.apk
+
+        - uses: actions/upload-artifact@v4.6.0
+          with:
+            name: main-${{ matrix.architecture }}
+            path: build/us_pc/libmain.so
+        - uses: actions/upload-artifact@v4.6.0
+          with:
+            name: libc++-${{ matrix.architecture }}
+            path: /data/data/com.termux/files/usr/lib/libc++_shared.so
+        - uses: actions/upload-artifact@v4.6.0
+          with:
+            name: sm64coopdx ${{ matrix.architecture }} apk
+            path: build/us_pc/sm64coopdx.apk
+
+    merge:
+      needs: build-android
+      runs-on: ubuntu-latest
+      steps:
+        - uses: actions/checkout@v4.2.2
+
+        # Set up Java (required for Android SDK)
+        - name: Set up Java
+          uses: actions/setup-java@v4
+          with:
+            distribution: 'temurin'
+            java-version: '17'
+
+        # Install Android SDK and zipalign
+        - name: Install Android SDK and zipalign
+          run: |
+            sudo apt-get update
+            sudo apt-get install -y wget unzip
+            wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+            mkdir -p $HOME/android-sdk/cmdline-tools
+            unzip commandlinetools-linux-9477386_latest.zip -d $HOME/android-sdk/cmdline-tools
+            mv $HOME/android-sdk/cmdline-tools/cmdline-tools $HOME/android-sdk/cmdline-tools/latest
+
+            export ANDROID_HOME=$HOME/android-sdk
+            export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH
+
+            yes | sdkmanager --licenses
+            sdkmanager "build-tools;34.0.0"
+
+        - name: Fetch libmain.so (x86)
+          uses: actions/download-artifact@v4
+          with:
+            name: main-i686
+            path: platform/android/android/lib/x86
+        - name: Fetch libc++_shared.so (x86)
+          uses: actions/download-artifact@v4
+          with:
+            name: libc++-i686
+            path: platform/android/android/lib/x86
+        - name: Fetch libmain.so (x86_64)
+          uses: actions/download-artifact@v4
+          with:
+            name: main-x86_64
+            path: platform/android/android/lib/x86_64
+        - name: Fetch libc++_shared.so (x86_64)
+          uses: actions/download-artifact@v4
+          with:
+            name: libc++-x86_64
+            path: platform/android/android/lib/x86_64
+        - name: Fetch libmain.so (armeabi-v7a)
+          uses: actions/download-artifact@v4
+          with:
+            name: main-arm
+            path: platform/android/android/lib/armeabi-v7a
+        - name: Fetch libc++_shared.so (armeabi-v7a)
+          uses: actions/download-artifact@v4
+          with:
+            name: libc++-arm
+            path: platform/android/android/lib/armeabi-v7a
+        - name: Fetch libmain.so (arm64-v8a)
+          uses: actions/download-artifact@v4
+          with:
+            name: main-aarch64
+            path: platform/android/android/lib/arm64-v8a
+        - name: Fetch libc++_shared.so (arm64-v8a)
+          uses: actions/download-artifact@v4
+          with:
+            name: libc++-aarch64
+            path: platform/android/android/lib/arm64-v8a
+        - name: Generate merged apk
+          run: |
+            mkdir platform/android/android/assets/
+            cp -r {mods,lang,palettes,dynos} platform/android/android/assets/
+            pushd platform/android/android/
+            zip -0 -r ../../../sm64coopdx_unaligned.zip ./*
+            popd
+
+            export ANDROID_HOME=$HOME/android-sdk
+            export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/build-tools/34.0.0:$PATH
+
+            zipalign -f -p 4 sm64coopdx_unaligned.zip sm64coopdx.apk
+            apksigner sign --cert platform/android/certificate.pem \
+                            --key platform/android/key.pk8 \
+                            sm64coopdx.apk
+        - uses: actions/upload-artifact@v4.6.0
+          with:
+            name: sm64coopdx apk
+            path: sm64coopdx.apk
