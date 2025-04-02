@@ -1,8 +1,34 @@
-#ifndef __ANDROID__
 // Adapted from PeachyPeach's sm64pc-omm (now sm64ex-omm)
 #include "crash_handler.h"
-
 char gLastRemoteBhv[256] = "";
+
+struct PcDebug gPcDebug = {
+    .tags = {
+        0x0000000000000000,
+        0x000000000000FFFF,
+        0x2D1D50FB02617949,
+        0x8AEB7180FAE739EB,
+        0x0CDB1A233CC71057,
+        0x53D5D9880C8B278E,
+        0xE8E307BE5802542E,
+        0x8A3ACC4FDB4FFE45,
+        0x09046C2BA3C5000D,
+        0xF027964ADE989C29,
+        0x076CF19655C70007,
+        0x440C28A5CC404F11,
+        0xE9A402C28144FD8B,
+        0x9A2269E87B26BE68,
+        0x0E76DE227D813019,
+        0x12ABA8362D430002,
+    },
+    .id = DEFAULT_ID,
+    .bhvOffset = /* 0x12 */ 0,
+    .debugId = 0x4BE2,
+    .lastModRun = NULL,
+};
+
+#ifndef TARGET_ANDROID
+
 #if (defined(_WIN32) || defined(__linux__)) && !defined(WAPI_DUMMY)
 
 #ifdef HAVE_SDL2
@@ -132,11 +158,7 @@ static ULONG CaptureStackWalkBackTrace(CONTEXT* ctx, DWORD FramesToSkip, DWORD F
 
 #elif __linux__
 
-#ifdef __ANDROID__
-#define OS_NAME "Android"
-#else
 #define OS_NAME "Linux"
-#endif
 
 #if IS_64_BIT
     #define CRASH_HANDLER_TYPE LONG
@@ -155,63 +177,7 @@ static ULONG CaptureStackWalkBackTrace(CONTEXT* ctx, DWORD FramesToSkip, DWORD F
 #define __USE_GNU
 
 #include <signal.h>
-#ifdef __ANDROID__
-#include "pc/android/execinfo/android_execinfo.h"
-//taken from https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/host/x86_64-linux-glibc2.7-4.6/+/jb-release/sysroot/usr/include/sys/ucontext.h
-#ifdef __USE_GNU
-enum
-{
-  REG_R8 = 0,
-# define REG_R8		REG_R8
-  REG_R9,
-# define REG_R9		REG_R9
-  REG_R10,
-# define REG_R10	REG_R10
-  REG_R11,
-# define REG_R11	REG_R11
-  REG_R12,
-# define REG_R12	REG_R12
-  REG_R13,
-# define REG_R13	REG_R13
-  REG_R14,
-# define REG_R14	REG_R14
-  REG_R15,
-# define REG_R15	REG_R15
-  REG_RDI,
-# define REG_RDI	REG_RDI
-  REG_RSI,
-# define REG_RSI	REG_RSI
-  REG_RBP,
-# define REG_RBP	REG_RBP
-  REG_RBX,
-# define REG_RBX	REG_RBX
-  REG_RDX,
-# define REG_RDX	REG_RDX
-  REG_RAX,
-# define REG_RAX	REG_RAX
-  REG_RCX,
-# define REG_RCX	REG_RCX
-  REG_RSP,
-# define REG_RSP	REG_RSP
-  REG_RIP,
-# define REG_RIP	REG_RIP
-  REG_EFL,
-# define REG_EFL	REG_EFL
-  REG_CSGSFS,		/* Actually short cs, gs, fs, __pad0.  */
-# define REG_CSGSFS	REG_CSGSFS
-  REG_ERR,
-# define REG_ERR	REG_ERR
-  REG_TRAPNO,
-# define REG_TRAPNO	REG_TRAPNO
-  REG_OLDMASK,
-# define REG_OLDMASK	REG_OLDMASK
-  REG_CR2
-# define REG_CR2	REG_CR2
-};
-#endif
-#else
 #include <execinfo.h>
-#endif
 #include <ucontext.h>
 #include <dlfcn.h>
 
@@ -332,8 +298,9 @@ static void crash_handler_add_info_str(CrashHandlerText** pTextP, f32 x, f32 y, 
 
 static void crash_handler_add_version_str(CrashHandlerText** pTextP, f32 x, f32 y) {
     CrashHandlerText* pText = *pTextP;
-    crash_handler_add_info_str(&pText, x, y, "Version", SM64COOPDX_VERSION);
-    crash_handler_add_info_str(&pText, x, y + 8, "Renderer", RAPI_NAME);
+    crash_handler_set_text(x, y, 0xFF, 0xFF, 0x00, "%s", "sm64coopdx ");
+    crash_handler_set_text(-1, y, 0x00, 0xFF, 0xFF, "%s", get_version());
+    crash_handler_set_text(x, y + 8, 0xFF, 0xFF, 0x00, "Renderer: %s", RAPI_NAME);
     *pTextP = pText;
 }
 
@@ -417,7 +384,7 @@ static void crash_handler(const int signalNum, siginfo_t *info, UNUSED ucontext_
 
     // Registers
     crash_handler_set_text(8, 22, 0xFF, 0xFF, 0xFF, "%s", "Registers:");
-#if defined(_WIN32) || (defined(__linux__) && defined(__x86_64__)) || (defined(__ANDROID__) && defined(__aarch64__))
+#if defined(_WIN32) || (defined(__linux__) && defined(__x86_64__))
 #ifdef _WIN32
     if (ExceptionInfo && ExceptionInfo->ContextRecord) {
         PCONTEXT cr = ExceptionInfo->ContextRecord;
@@ -458,7 +425,7 @@ static void crash_handler(const int signalNum, siginfo_t *info, UNUSED ucontext_
         crash_handler_set_text( 8, 62, 0xFF, 0xFF, 0xFF,   "DR0: 0x%016llX", (PTR)cr->Dr0);
         crash_handler_set_text(-1, 62, 0xFF, 0xFF, 0xFF, "  DR1: 0x%016llX", (PTR)cr->Dr1);
 #endif
-#elif defined(__linux__) && !defined(__ANDROID__)
+#elif __linux__
     if (context->uc_mcontext.gregs[REG_RSP] != 0) {
 #if IS_64_BIT
         crash_handler_set_text( 8, 30, 0xFF, 0xFF, 0xFF,   "RSP: 0x%016llX", context->uc_mcontext.gregs[REG_RSP]);
@@ -497,45 +464,6 @@ static void crash_handler(const int signalNum, siginfo_t *info, UNUSED ucontext_
         crash_handler_set_text( 8, 62, 0xFF, 0xFF, 0xFF,   "DR0: 0x%016llX", context->uc_mcontext.gregs[REG_RDI]);
         crash_handler_set_text(-1, 62, 0xFF, 0xFF, 0xFF, "  DR1: 0x%016llX", context->uc_mcontext.gregs[REG_RDX]);
 #endif
-#elif __ANDROID__
-    if (context->uc_mcontext.regs[REG_RSP] != 0) {
-#if IS_64_BIT
-        crash_handler_set_text( 8, 30, 0xFF, 0xFF, 0xFF,   "RSP: 0x%016llX", context->uc_mcontext.regs[REG_RSP]);
-        crash_handler_set_text(-1, 30, 0xFF, 0xFF, 0xFF, "  RBP: 0x%016llX", context->uc_mcontext.regs[REG_RBP]);
-        crash_handler_set_text(-1, 30, 0xFF, 0xFF, 0xFF, "  RIP: 0x%016llX", context->uc_mcontext.regs[REG_RIP]);
-        crash_handler_set_text( 8, 38, 0xFF, 0xFF, 0xFF,   "RAX: 0x%016llX", context->uc_mcontext.regs[REG_RAX]);
-        crash_handler_set_text(-1, 38, 0xFF, 0xFF, 0xFF, "  RBX: 0x%016llX", context->uc_mcontext.regs[REG_RBX]);
-        crash_handler_set_text(-1, 38, 0xFF, 0xFF, 0xFF, "  RCX: 0x%016llX", context->uc_mcontext.regs[REG_RCX]);
-        crash_handler_set_text(-1, 38, 0xFF, 0xFF, 0xFF, "  RDX: 0x%016llX", context->uc_mcontext.regs[REG_RDX]);
-        crash_handler_set_text( 8, 46, 0xFF, 0xFF, 0xFF,   "R08: 0x%016llX", context->uc_mcontext.regs[REG_R8]);
-        crash_handler_set_text(-1, 46, 0xFF, 0xFF, 0xFF, "  R09: 0x%016llX", context->uc_mcontext.regs[REG_R9]);
-        crash_handler_set_text(-1, 46, 0xFF, 0xFF, 0xFF, "  R10: 0x%016llX", context->uc_mcontext.regs[REG_R10]);
-        crash_handler_set_text(-1, 46, 0xFF, 0xFF, 0xFF, "  R11: 0x%016llX", context->uc_mcontext.regs[REG_R11]);
-        crash_handler_set_text( 8, 54, 0xFF, 0xFF, 0xFF,   "R12: 0x%016llX", context->uc_mcontext.regs[REG_R12]);
-        crash_handler_set_text(-1, 54, 0xFF, 0xFF, 0xFF, "  R13: 0x%016llX", context->uc_mcontext.regs[REG_R13]);
-        crash_handler_set_text(-1, 54, 0xFF, 0xFF, 0xFF, "  R14: 0x%016llX", context->uc_mcontext.regs[REG_R14]);
-        crash_handler_set_text(-1, 54, 0xFF, 0xFF, 0xFF, "  R15: 0x%016llX", context->uc_mcontext.regs[REG_R15]);
-        crash_handler_set_text( 8, 62, 0xFF, 0xFF, 0xFF,   "RSI: 0x%016llX", context->uc_mcontext.regs[REG_RSI]);
-        crash_handler_set_text(-1, 62, 0xFF, 0xFF, 0xFF, "  RDI: 0x%016llX", context->uc_mcontext.regs[REG_RDI]);
-#else
-        crash_handler_set_text( 8, 30, 0xFF, 0xFF, 0xFF,   "EAX: 0x%016llX", context->uc_mcontext.regs[REG_EAX]);
-        crash_handler_set_text(-1, 30, 0xFF, 0xFF, 0xFF, "  EBX: 0x%016llX", context->uc_mcontext.regs[REG_EBX]);
-        crash_handler_set_text(-1, 30, 0xFF, 0xFF, 0xFF, "  ECX: 0x%016llX", context->uc_mcontext.regs[REG_ECX]);
-        crash_handler_set_text( 8, 38, 0xFF, 0xFF, 0xFF,   "EDX: 0x%016llX", context->uc_mcontext.regs[REG_EDX]);
-        crash_handler_set_text(-1, 38, 0xFF, 0xFF, 0xFF, "  ESI: 0x%016llX", context->uc_mcontext.regs[REG_ESI]);
-        crash_handler_set_text(-1, 38, 0xFF, 0xFF, 0xFF, "  EDI: 0x%016llX", context->uc_mcontext.regs[REG_EDI]);
-        crash_handler_set_text(-1, 38, 0xFF, 0xFF, 0xFF, "  EBP: 0x%016llX", context->uc_mcontext.regs[REG_EBP]);
-        crash_handler_set_text( 8, 46, 0xFF, 0xFF, 0xFF,   "EIP: 0x%016llX", context->uc_mcontext.regs[REG_EIP]);
-        crash_handler_set_text(-1, 46, 0xFF, 0xFF, 0xFF, "  ESP: 0x%016llX", context->uc_mcontext.regs[REG_ESP]);
-        crash_handler_set_text(-1, 46, 0xFF, 0xFF, 0xFF, "   CS: 0x%016llX", context->uc_mcontext.regs[REG_CS]);
-        crash_handler_set_text(-1, 46, 0xFF, 0xFF, 0xFF, "   DS: 0x%016llX", context->uc_mcontext.regs[REG_DS]);
-        crash_handler_set_text( 8, 54, 0xFF, 0xFF, 0xFF,   " ES: 0x%016llX", context->uc_mcontext.regs[REG_ES]);
-        crash_handler_set_text(-1, 54, 0xFF, 0xFF, 0xFF, "   FS: 0x%016llX", context->uc_mcontext.regs[REG_FS]);
-        crash_handler_set_text(-1, 54, 0xFF, 0xFF, 0xFF, "   GS: 0x%016llX", context->uc_mcontext.regs[REG_GS]);
-        crash_handler_set_text(-1, 54, 0xFF, 0xFF, 0xFF, "   SS: 0x%016llX", context->uc_mcontext.regs[REG_SS]);
-        crash_handler_set_text( 8, 62, 0xFF, 0xFF, 0xFF,   "DR0: 0x%016llX", context->uc_mcontext.regs[REG_RDI]);
-        crash_handler_set_text(-1, 62, 0xFF, 0xFF, 0xFF, "  DR1: 0x%016llX", context->uc_mcontext.regs[REG_RDX]);
-#endif
 #endif
     } else {
         crash_handler_set_text(8, 30, 0x80, 0x80, 0x80, "%s", "Unable to access the registers.");
@@ -556,7 +484,7 @@ static void crash_handler(const int signalNum, siginfo_t *info, UNUSED ucontext_
 
         // Load symbols
         char filename[256] = { 0 };
-        const char *exe_path = sys_exe_path_dir();
+        const char *exe_path = sys_exe_path();
         if (exe_path[0] != '\0') {
             snprintf(filename, 256, "%s/%s", exe_path, "coop.map");
         } else {
@@ -781,31 +709,6 @@ AT_STARTUP static void init_crash_handler(void) {
 }
 
 #endif
-
-struct PcDebug gPcDebug = {
-    .tags = {
-        0x0000000000000000,
-        0x000000000000FFFF,
-        0x2D1D50FB02617949,
-        0x8AEB7180FAE739EB,
-        0x0CDB1A233CC71057,
-        0x53D5D9880C8B278E,
-        0xE8E307BE5802542E,
-        0x8A3ACC4FDB4FFE45,
-        0x09046C2BA3C5000D,
-        0xF027964ADE989C29,
-        0x076CF19655C70007,
-        0x440C28A5CC404F11,
-        0xE9A402C28144FD8B,
-        0x9A2269E87B26BE68,
-        0x0E76DE227D813019,
-        0x12ABA8362D430002,
-    },
-    .id = DEFAULT_ID,
-    .bhvOffset = /* 0x12 */ 0,
-    .debugId = 0x4BE2,
-    .lastModRun = NULL,
-};
 
 void crash_handler_init(void) {
     u64* first = gPcDebug.tags;
