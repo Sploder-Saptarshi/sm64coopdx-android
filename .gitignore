@@ -93,6 +93,9 @@ todo-old.txt
 tools/ido5.3_compiler/usr/lib/libc.so.1
 /.vs
 
+
 # Android files
 !platform/android/android/**/*.so
+lib/src/lua/src/lua
+lib/src/lua/src/luac
 !lib/**/android/*.a
