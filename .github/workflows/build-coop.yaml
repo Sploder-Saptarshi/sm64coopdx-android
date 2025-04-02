@@ -229,10 +229,10 @@ jobs:
 
           # Optionally set a maximum time for the job to ensure it doesn't run indefinitely
           timeout-minutes: 15
-          
+
         - name: Copy ROM using actions secret
-              run: |
-                curl -L "${{ secrets.ROM }}" -o ./baserom.us.z64
+          run: |
+            curl -L "${{ secrets.ROM }}" -o ./baserom.us.z64
 
         - name: Build
           run: chmod 777 -R . && /entrypoint.sh git config --global safe.directory '*' && /entrypoint.sh git clone https://github.com/${GITHUB_REPOSITORY}.git . && /entrypoint.sh git checkout "${GITHUB_REF_NAME}" && chmod +x .github/build-sm64coopdx-in-termux-docker.sh && /entrypoint.sh .github/build-sm64coopdx-in-termux-docker.sh ${{ matrix.architecture }}
