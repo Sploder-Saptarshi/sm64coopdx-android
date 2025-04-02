@@ -1111,7 +1111,7 @@ ifeq ($(COOPNET),1)
       LDFLAGS += -Llib/coopnet/linux -l:libcoopnet-arm.a -l:libjuice-arm.a
     endif
   else ifeq ($(TARGET_ANDROID),1)
-    LDFLAGS += -Llib/coopnet/android -l:libcoopnet.a -l:libjuice.a
+    LDFLAGS += -L$(COOPNET_DIR)/bin -L$(COOPNET_DIR)/lib/libjuice -l:libcoopnet.a -l:libjuice.a
   else ifeq ($(TARGET_RK3588),1)
     LDFLAGS += -Llib/coopnet/linux -l:libcoopnet-arm64.a -l:libjuice.a
   else
