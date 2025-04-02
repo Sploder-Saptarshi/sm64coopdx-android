@@ -488,6 +488,14 @@ endif
 
 TOOLS_DIR := tools
 
+# Remove source and precompile for android archs later
+
+LIBLUA_DIR := lib/src/lua
+
+LUA_PLATFORM := linux
+
+ZLIB_DIR := lib/src/zlib
+
 # (This is a bit hacky, but a lot of rules implicitly depend
 # on tools and assets, and we use directory globs further down
 # in the makefile that we want should cover assets.)
@@ -511,6 +519,22 @@ ifeq ($(filter clean distclean print-%,$(MAKECMDGOALS)),)
       ifeq ($(DUMMY),FAIL)
         $(error Failed to build tools)
       endif
+  endif
+
+  # Make liblua
+  ifeq ($(TARGET_ANDROID),1)
+    DUMMY != $(MAKE) -C $(LIBLUA_DIR) $(LUA_PLATFORM) >&2 || echo FAIL
+    ifeq ($(DUMMY),FAIL)
+      $(error Failed to build lua)
+    endif
+  endif
+
+  # Make zlib
+  ifeq ($(TARGET_ANDROID),1)
+    DUMMY != $(MAKE) -C $(ZLIB_DIR) libz.a >&2 || echo FAIL
+    ifeq ($(DUMMY),FAIL)
+      $(error Failed to build zlib)
+    endif
   endif
 
   $(info Building Game...)
@@ -1044,7 +1068,7 @@ else ifeq ($(TARGET_RPI),1)
     LDFLAGS += -Llib/lua/linux -l:liblua53-arm.a
   endif
 else ifeq ($(TARGET_ANDROID),1)
-  LDFLAGS += -Llib/lua/android -l:liblua.a
+  LDFLAGS += -L$(LIBLUA_DIR)/src -l:liblua.a
 else ifeq ($(TARGET_RK3588),1)
   LDFLAGS += -Llib/lua/linux -l:liblua53-arm64.a
 else
@@ -1290,6 +1314,8 @@ endif
 
 clean:
 	$(RM) -r $(BUILD_DIR_BASE)
+	$(MAKE) -s -C $(LIBLUA_DIR) clean
+	$(MAKE) -s -C $(ZLIB_DIR) clean
 
 cleantools:
 	$(MAKE) -s -C $(TOOLS_DIR) clean

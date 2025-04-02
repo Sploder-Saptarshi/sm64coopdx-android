@@ -98,4 +98,4 @@ tools/ido5.3_compiler/usr/lib/libc.so.1
 !platform/android/android/**/*.so
 lib/src/lua/src/lua
 lib/src/lua/src/luac
-!lib/**/android/*.a
+!lib/coopnet/android/*.a
