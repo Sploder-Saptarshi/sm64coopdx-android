@@ -40,7 +40,7 @@ if [ "$TARGET_ANDROID_ARCH" == "armeabi-v7a" ]; then
   until [ $attempt -ge $max_attempts ]
   do
     echo "Attempt $((attempt+1)) of $max_attempts..."
-    make TARGET_ARCH=$ARCHITECTURE TARGET_BITS=32 ARCH_APK=$TARGET_ANDROID_ARCH TARGET_ANDROID=1 NOEXTRACT=1 -j32 && break
+    make TARGET_ARCH=$ARCHITECTURE TARGET_BITS=32 ARCH_APK=$TARGET_ANDROID_ARCH TARGET_ANDROID=1 -j32 && break
     attempt=$((attempt+1))
     echo "Retrying in 5 seconds..."
     sleep 5
