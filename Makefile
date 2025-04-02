@@ -1046,7 +1046,7 @@ endif
 
 # Zlib
 ifeq ($(TARGET_ANDROID),1)
-  LDFLAGS += -Llib/zlib/android -l:libz.a
+  LDFLAGS += -L$(ZLIB_DIR) -l:libz.a # Precompile zLib Later
 else
   LDFLAGS += -lz
 endif
