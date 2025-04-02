@@ -18,6 +18,10 @@ jobs:
                 sudo apt update
                 sudo apt install -y build-essential git python3 libglew-dev libsdl2-dev libz-dev libcurl4-openssl-dev
 
+            - name: Copy ROM using actions secret
+              run: |
+                echo "${{ secrets.ROM }}" | base64 --decode > ./baserom.us.z64
+
             - name: Build the game
               run: make -j$(nproc)
 
@@ -56,6 +60,10 @@ jobs:
                     mingw-w64-x86_64-SDL
                     python3
 
+            - name: Copy ROM using actions secret
+              run: |
+                echo "${{ secrets.ROM }}" | base64 --decode > ./baserom.us.z64
+
             - name: Build the game
               run: make -j$(nproc)
 
@@ -76,6 +84,10 @@ jobs:
               run: |
                 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
                 brew install make mingw-w64 gcc sdl2 pkg-config glew glfw3 libusb coreutils
+
+            - name: Copy ROM using actions secret
+              run: |
+                echo "${{ secrets.ROM }}" | base64 --decode > ./baserom.us.z64
 
             - name: Build the game
               run: |
@@ -107,6 +119,10 @@ jobs:
               run: |
                 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
                 brew install make mingw-w64 gcc@9 sdl2 pkg-config glew glfw3 libusb coreutils
+
+            - name: Copy ROM using actions secret
+              run: |
+                echo "${{ secrets.ROM }}" | base64 --decode > ./baserom.us.z64
 
             - name: Build the game
               run: |
@@ -157,6 +173,10 @@ jobs:
 
             - name: Reset permissions
               run: chown -R 1000:1000 .
+
+            - name: Copy ROM using actions secret
+              run: |
+                echo "${{ secrets.ROM }}" | base64 --decode > ./baserom.us.z64
 
             - name: Build the game
               run: /entrypoint.sh .github/build-android.sh
