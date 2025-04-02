@@ -1715,6 +1715,7 @@ $(ZIP_UNCOMPRESSED): $(EXE) $(APK_FILES)
 	cp -r lang $(BUILD_DIR)/platform/android/android/assets/ && \
   cp -r palettes $(BUILD_DIR)/platform/android/android/assets/ && \
   cp -r dynos $(BUILD_DIR)/platform/android/android/assets/ && \
+  mkdir -p $(BUILD_DIR)/platform/android/android/lib/$(ARCH_APK)/ && \
 	cp $(PREFIX)/lib/libc++_shared.so $(BUILD_DIR)/platform/android/android/lib/$(ARCH_APK)/ && \
 	cp $(EXE) $(BUILD_DIR)/platform/android/android/lib/$(ARCH_APK)/ && \
 	cd $(BUILD_DIR)/platform/android/android && \
