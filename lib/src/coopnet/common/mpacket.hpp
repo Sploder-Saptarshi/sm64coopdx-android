@@ -140,7 +140,7 @@ typedef struct {
 typedef struct {
     uint64_t destId;
     uint64_t infoBits;
-    std::size_t hash;
+    uint64_t hash;
 } MPacketInfoData;
 
 typedef struct {
