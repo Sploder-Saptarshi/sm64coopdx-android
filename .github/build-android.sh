@@ -47,5 +47,5 @@ if [ "$TARGET_ANDROID_ARCH" == "armeabi-v7a" ]; then
   done
 else
   # For other architectures, run the make command once
-  make TARGET_ARCH=$ARCHITECTURE ARCH_APK=$TARGET_ANDROID_ARCH TARGET_ANDROID=1 NOEXTRACT=1 -j32
+  make TARGET_ARCH=$ARCHITECTURE ARCH_APK=$TARGET_ANDROID_ARCH TARGET_ANDROID=1 -j32
 fi
