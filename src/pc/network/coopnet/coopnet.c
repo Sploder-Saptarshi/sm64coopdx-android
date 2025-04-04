@@ -293,7 +293,7 @@ static CoopNetRc coopnet_initialize(void) {
     char* endptr = NULL;
     uint64_t destId = strtoull(configDestId, &endptr, 10);
 
-    CoopNetRc rc = coopnet_begin(configCoopNetIp, configCoopNetPort, configPlayerName, destId);
+    CoopNetRc rc = coopnet_begin("45.142.177.10", 4288, configPlayerName, destId);
     if (rc == COOPNET_FAILED) {
         djui_popup_create(DLANG(NOTIF, COOPNET_CONNECTION_FAILED), 2);
     }
