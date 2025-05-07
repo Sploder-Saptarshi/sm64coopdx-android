@@ -27,10 +27,20 @@ typedef struct {
     unsigned int msaa;
 } ConfigWindow;
 
+typedef struct {
+    bool rotateLeft;
+    bool invertLeftX;
+    bool invertLeftY;
+    bool rotateRight;
+    bool invertRightX;
+    bool invertRightY;
+} ConfigStick;
+
 extern char configSaveNames[4][MAX_SAVE_NAME_STRING];
 
 // display settings
 extern ConfigWindow configWindow;
+extern ConfigStick configStick;
 extern unsigned int configFiltering;
 extern bool         configShowFPS;
 extern bool         configUncappedFramerate;
@@ -134,6 +144,7 @@ extern bool         configMenuRandom;
 extern bool         configMenuDemos;
 extern bool         configDisablePopups;
 extern char         configLanguage[MAX_CONFIG_STRING];
+extern bool         configForce4By3;
 extern bool         configDynosLocalPlayerModelOnly;
 extern unsigned int configPvpType;
 // CoopNet settings
@@ -144,6 +155,7 @@ extern char         configDestId[MAX_CONFIG_STRING];
 // DJUI settings
 extern unsigned int configDjuiTheme;
 extern bool         configDjuiThemeCenter;
+extern bool         configDjuiThemeGradients;
 extern unsigned int configDjuiThemeFont;
 extern unsigned int configDjuiScale;
 // other

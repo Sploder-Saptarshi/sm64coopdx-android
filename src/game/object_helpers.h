@@ -40,16 +40,6 @@ struct WaterDropletParams
     f32 randSizeScale;
 };
 
-struct struct802A1230 {
-    /*0x00*/ s16 unk00;
-    /*0x02*/ s16 unk02;
-};
-
-struct Struct802A272C {
-    Vec3f vecF;
-    Vec3s vecS;
-};
-
 // TODO: Field names
 struct SpawnParticlesInfo
 {
@@ -69,6 +59,7 @@ struct SpawnParticlesInfo
 
 extern u8 (*gContinueDialogFunction)(void);
 extern struct Object* gContinueDialogFunctionObject;
+extern s16 gRoomOverride;
 
 Gfx *geo_update_projectile_pos_from_parent(s32 callContext, UNUSED struct GraphNode *node, Mat4 mtx);
 Gfx *geo_update_layer_transparency(s32 callContext, struct GraphNode *node, UNUSED void *context);

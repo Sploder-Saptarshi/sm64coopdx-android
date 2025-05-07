@@ -974,7 +974,7 @@
 
 --- @class GraphNodeSwitchCase
 --- @field public fnNode FnGraphNode
---- @field public numCases integer
+--- @field public parameter integer
 --- @field public selectedCase integer
 --- @field public unused integer
 
@@ -1071,6 +1071,7 @@
 --- @field public fixCollisionBugsGroundPoundBonks integer
 --- @field public fixCollisionBugsPickBestWall integer
 --- @field public fixCollisionBugsRoundedCorners integer
+--- @field public fixInvalidShellRides integer
 --- @field public fixVanishFloors integer
 --- @field public floatingStarDance integer
 --- @field public floorLowerLimit integer
@@ -2292,10 +2293,6 @@
 --- @field public dialog5 integer
 --- @field public dialog6 integer
 
---- @class Struct802A272C
---- @field public vecF Vec3f
---- @field public vecS Vec3s
-
 --- @class Surface
 --- @field public flags integer
 --- @field public force integer
@@ -2333,10 +2330,19 @@
 --- @field public posYaw integer
 
 --- @class Vtx
---- @field public cn integer[]
+--- @field public a integer
+--- @field public b integer
 --- @field public flag integer
---- @field public ob number[]
---- @field public tc integer[]
+--- @field public g integer
+--- @field public nx integer
+--- @field public ny integer
+--- @field public nz integer
+--- @field public r integer
+--- @field public tu integer
+--- @field public tv integer
+--- @field public x number
+--- @field public y number
+--- @field public z number
 
 --- @class Vtx_Interp
 --- @field public n string
@@ -2400,10 +2406,6 @@
 --- @field public pos Vec3s
 --- @field public strength integer
 
---- @class struct802A1230
---- @field public unk00 integer
---- @field public unk02 integer
-
 --- @class Vec2f
 --- @field public x number
 --- @field public y number
@@ -2453,12 +2455,12 @@
 --- @field public g integer
 --- @field public b integer
 
---- @class Pointer_integer
---- @class Pointer_Trajectory
---- @class Pointer_Gfx
---- @class Pointer_LevelScript
---- @class Pointer_ObjectAnimPointer
---- @class Pointer_Collision
---- @class Pointer_Mat4
---- @class Pointer_Vec4s
---- @class Pointer_BehaviorScript
+--- @alias Pointer_integer integer
+--- @alias Pointer_Trajectory Trajectory
+--- @alias Pointer_Gfx Gfx
+--- @alias Pointer_LevelScript LevelScript
+--- @alias Pointer_ObjectAnimPointer ObjectAnimPointer
+--- @alias Pointer_Collision Collision
+--- @alias Pointer_Mat4 Mat4
+--- @alias Pointer_Vec4s Vec4s
+--- @alias Pointer_BehaviorScript BehaviorScript

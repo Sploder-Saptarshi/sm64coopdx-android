@@ -128,7 +128,7 @@ override_field_immutable = {
     "GraphNodeObject": [ "angle", "animInfo", "cameraToObject", "node", "pos", "prevAngle", "prevPos", "prevScale", "prevScaleTimestamp", "prevShadowPos", "prevShadowPosTimestamp", "prevThrowMatrix", "prevThrowMatrixTimestamp", "prevTimestamp", "scale", "shadowPos", "sharedChild", "skipInterpolationTimestamp", "throwMatrixPrev", "unk4C", ],
     "GraphNodeObjectParent": [ "sharedChild" ],
     "GraphNodePerspective": [ "unused" ],
-    "GraphNodeSwitchCase": [ "fnNode", "numCases", "unused" ],
+    "GraphNodeSwitchCase": [ "fnNode", "unused" ],
     "ObjectWarpNode": [ "next "],
     "Animation": [ "length" ],
     "AnimationTable": [ "count" ],
@@ -165,7 +165,7 @@ sLuaManuallyDefinedStructs = [{
 
 override_types = {
     "Gwords": "Gfx",
-    "Vtx_t": "Vtx"
+    "Vtx_L": "Vtx"
 }
 reversed_override_types = {v: k for k, v in override_types.items()}
 
@@ -275,6 +275,7 @@ def table_to_string(table):
 
 def parse_struct(struct_str, sortFields = True):
     struct = {}
+    struct_str = strip_anonymous_blocks(struct_str) # Allow unions and sub-structs to be accessed
     match = re.match(r"struct\s*(\w+)?\s*{(.*?)}\s*(\w+)?\s*", struct_str.replace("typedef ", ""), re.DOTALL)
     struct_name, body, trailing_name = match.groups()
     identifier = struct_name if struct_name else trailing_name
@@ -772,7 +773,7 @@ def def_structs(structs):
 
     s += '\n'
     for def_pointer in def_pointers:
-        s += '--- @class %s\n' % def_pointer
+        s += '--- @alias %s %s\n' % (def_pointer, def_pointer[8:])
 
     with open(get_path(out_filename_defs), 'w', newline='\n') as out:
         out.write(s)

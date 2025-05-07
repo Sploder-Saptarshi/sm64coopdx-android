@@ -105,8 +105,8 @@ The lua functions sent to `hook_event()` will be automatically called by SM64 wh
 | HOOK_ON_HUD_RENDER_BEHIND | Called when the HUD is being rendered, every HUD call in this hook renders behind the vanilla HUD | None |
 | HOOK_ALLOW_INTERACT | Called before mario interacts with an object, return `true` to allow the interaction | [MarioState](../structs.md#MarioState) interactor, [Object](../structs.md#Object) interactee, [enum InteractionType](../constants.md#enum-InteractionType) interactType |
 | HOOK_ON_INTERACT | Called when mario interacts with an object | [MarioState](../structs.md#MarioState) interactor, [Object](../structs.md#Object) interactee, [enum InteractionType](../constants.md#enum-InteractionType) interactType, bool interactValue |
-| HOOK_ON_LEVEL_INIT | Called when the level is initialized | None |
-| HOOK_ON_WARP | Called when the local player warps | None |
+| HOOK_ON_LEVEL_INIT | Called when the level is initialized | `integer` type, `integer` levelNum, `integer` areaIdx, `integer` nodeId, `integer` arg |
+| HOOK_ON_WARP | Called when the local player warps | `integer` type, `integer` levelNum, `integer` areaIdx, `integer` nodeId, `integer` arg |
 | HOOK_ON_SYNC_VALID | Called when the current area is synchronized | None |
 | HOOK_ON_OBJECT_UNLOAD | Called when any object is unloaded | [Object](../structs.md#Object) unloadedObject |
 | HOOK_ON_SYNC_OBJECT_UNLOAD | Called when any networked object is unloaded | [Object](../structs.md#Object) unloadedObject |
@@ -143,7 +143,11 @@ The lua functions sent to `hook_event()` will be automatically called by SM64 wh
 | HOOK_ON_GEO_PROCESS | Called when a GeoLayout is processed **Note:** You must set the `hookProcess` field of the graph node to a non-zero value | [GraphNode](../structs.md#GraphNode) graphNode, `integer` matStackIndex |
 | HOOK_BEFORE_GEO_PROCESS | Called before a GeoLayout is processed **Note:** You must set the `hookProcess` field of the graph node to a non-zero value | [GraphNode](../structs.md#GraphNode) graphNode, `integer` matStackIndex |
 | HOOK_ON_GEO_PROCESS_CHILDREN | Called when the children of a GeoLayout node is processed **Note:** You must set the `hookProcess` field of the parent graph node to a non-zero value | [GraphNode](../structs.md#GraphNode) graphNode, `integer` matStackIndex |
+| HOOK_MARIO_OVERRIDE_GEOMETRY_INPUTS | Called before running Mario's geometry input logic, return `false` to not run it. | [MarioState](../structs.md) m | 
 | HOOK_ON_INTERACTIONS | Called when the Mario interactions are processed | [MarioState](../structs.md#MarioState) mario |
+| HOOK_ALLOW_FORCE_WATER_ACTION | Called when executing a non-water action while under the water's surface, or vice versa. Return `false` to prevent the player from being forced out of the action at the water's surface | [MarioState](../structs.md#MarioState) mario, `boolean` isInWaterAction |
+| HOOK_BEFORE_WARP | Called before the local player warps. Return a table with `destLevel`, `destArea`, `destWarpNode`, to override the warp | `integer` destLevel, `integer` destArea, `integer` destWarpNode, `integer` arg |
+| HOOK_ON_INSTANT_WARP | Called when the local player goes through an instant warp.| `integer` area, `integer` id, `Vec3s` displacement|
 
 ### Parameters
 

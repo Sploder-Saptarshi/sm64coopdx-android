@@ -1,4 +1,3 @@
-#include <map>
 #include <vector>
 #include "dynos.cpp.h"
 
@@ -7,7 +6,6 @@ extern "C" {
 #include "engine/graph_node.h"
 #include "model_ids.h"
 #include "pc/lua/utils/smlua_model_utils.h"
-#include "engine/display_list.h"
 }
 
 enum ModelLoadType {
@@ -21,7 +19,6 @@ struct ModelInfo {
     void* asset;
     struct GraphNode* graphNode;
     enum ModelPool modelPool;
-    std::vector<void*> *duplicates;
 };
 
 static struct DynamicPool* sModelPools[MODEL_POOL_MAX] = { 0 };
@@ -29,10 +26,6 @@ static struct DynamicPool* sModelPools[MODEL_POOL_MAX] = { 0 };
 static std::map<void*, struct ModelInfo> sAssetMap[MODEL_POOL_MAX];
 static std::map<u32, std::vector<struct ModelInfo>> sIdMap;
 static std::map<u32, u32> sOverwriteMap;
-
-// An array of display list and/or vertex buffer duplicates for the current model processed in process_geo_layout
-static std::vector<void*> *sCurrModelDuplicates = nullptr;
-static std::vector<void*> sScheduledFree[MODEL_POOL_MAX];
 
 static u32 find_empty_id(bool aIsPermanent) {
     u32 id = aIsPermanent ? 9999 : VANILLA_ID_END + 1;
@@ -63,6 +56,30 @@ void DynOS_Model_Dump() {
     }
 }
 
+static struct GraphNode *DynOS_Model_CheckMap(int index, u32* aId, void* aAsset, bool aDeDuplicate) {
+    auto& map = sAssetMap[index];
+    if (aDeDuplicate) {
+        auto it = map.find(aAsset);
+        if (it != map.end()) {
+            auto& found = it->second;
+
+            if (index != MODEL_POOL_PERMANENT) {
+                if (*aId && *aId != found.id) {
+                    sOverwriteMap[*aId] = found.id;
+                }
+                *aId = found.id;
+                return found.graphNode;
+            }
+
+            if (!*aId || *aId == found.id) {
+                if (!*aId) { *aId = found.id; }
+                return found.graphNode;
+            }
+        }
+    }
+    return NULL;
+}
+
 static struct GraphNode* DynOS_Model_LoadCommonInternal(u32* aId, enum ModelPool aModelPool, void* aAsset, u8 aLayer, struct GraphNode* aGraphNode, bool aDeDuplicate, enum ModelLoadType mlt) {
     // sanity check pool
     if (aModelPool >= MODEL_POOL_MAX) { return NULL; }
@@ -72,34 +89,20 @@ static struct GraphNode* DynOS_Model_LoadCommonInternal(u32* aId, enum ModelPool
         sModelPools[aModelPool] = dynamic_pool_init();
     }
 
-    // check perm map
-    auto& permMap = sAssetMap[MODEL_POOL_PERMANENT];
-    if (aDeDuplicate && permMap.count(aAsset)) {
-        auto& found = permMap[aAsset];
-        if (*aId && *aId == found.id) {
-            return found.graphNode;
-        }
-        if (*aId == 0) {
-            *aId = found.id;
-            return found.graphNode;
-        }
+    // check maps, permanent pool is always checked
+    struct GraphNode *node = NULL;
+    #define CHECK_POOL(pool) if (node = DynOS_Model_CheckMap(pool, aId, aAsset, aDeDuplicate)) { return node; }
+    CHECK_POOL(MODEL_POOL_PERMANENT);
+    if (aModelPool == MODEL_POOL_SESSION) {
+        CHECK_POOL(MODEL_POOL_SESSION);
+        CHECK_POOL(MODEL_POOL_LEVEL);
     }
-
-    // check map
-    auto& map = sAssetMap[aModelPool];
-    if (aDeDuplicate && map.count(aAsset)) {
-        auto& found = map[aAsset];
-        if (*aId && *aId != found.id) {
-            sOverwriteMap[*aId] = found.id;
-        }
-        *aId = found.id;
-        return found.graphNode;
+    if (aModelPool == MODEL_POOL_LEVEL) {
+        CHECK_POOL(MODEL_POOL_LEVEL);
     }
-
-    sCurrModelDuplicates = new std::vector<void*>();
 
     // load geo
-    struct GraphNode* node = NULL;
+    auto& map = sAssetMap[aModelPool];
     switch (mlt) {
         case MLT_GEO:
             node = process_geo_layout(sModelPools[aModelPool], aAsset);
@@ -111,14 +114,7 @@ static struct GraphNode* DynOS_Model_LoadCommonInternal(u32* aId, enum ModelPool
             node = aGraphNode;
             break;
     }
-    if (!node) {
-        for (auto &duplicate : *sCurrModelDuplicates) {
-            free(duplicate);
-        }
-        delete sCurrModelDuplicates;
-        sCurrModelDuplicates = nullptr;
-        return NULL;
-    }
+    if (!node) { return NULL; }
 
     // figure out id
     if (!*aId) { *aId = find_empty_id(aModelPool == MODEL_POOL_PERMANENT); }
@@ -129,9 +125,7 @@ static struct GraphNode* DynOS_Model_LoadCommonInternal(u32* aId, enum ModelPool
         .asset = aAsset,
         .graphNode = node,
         .modelPool = aModelPool,
-        .duplicates = sCurrModelDuplicates,
     };
-    sCurrModelDuplicates = nullptr;
 
     // store in maps
     sIdMap[*aId].push_back(info);
@@ -159,8 +153,9 @@ struct GraphNode* DynOS_Model_StoreGeo(u32* aId, enum ModelPool aModelPool, void
 }
 
 struct GraphNode* DynOS_Model_GetErrorGeo() {
-    if (!sIdMap.count(MODEL_ERROR_MODEL)) { return NULL; }
-    auto& vec = sIdMap[MODEL_ERROR_MODEL];
+    auto it = sIdMap.find(MODEL_ERROR_MODEL);
+    if (it == sIdMap.end()) { return NULL; }
+    auto& vec = it->second;
     if (vec.size() == 0 || vec.empty()) {
         return NULL;
     }
@@ -170,15 +165,17 @@ struct GraphNode* DynOS_Model_GetErrorGeo() {
 struct GraphNode* DynOS_Model_GetGeo(u32 aId) {
     if (!aId) { return NULL; }
 
-    if (sOverwriteMap.count(aId)) {
-        aId = sOverwriteMap[aId];
+    auto overwriteIt = sOverwriteMap.find(aId);
+    if (overwriteIt != sOverwriteMap.end()) {
+        aId = overwriteIt->second;
     }
 
-    if (sIdMap.count(aId) == 0) {
+    auto idIt = sIdMap.find(aId);
+    if (idIt == sIdMap.end()) {
         return DynOS_Model_GetErrorGeo();
     }
 
-    auto& vec = sIdMap[aId];
+    auto& vec = idIt->second;
     if (vec.size() == 0 || vec.empty()) {
         return DynOS_Model_GetErrorGeo();
     }
@@ -225,11 +222,14 @@ u32 DynOS_Model_GetIdFromAsset(void* asset) {
     if (!asset) { return MODEL_NONE; }
     u32 lowest = 9999;
     for (int i = 0; i < MODEL_POOL_MAX; i++) {
-        if (!sAssetMap[i].count(asset)) { continue; }
-        u32 id = sAssetMap[i][asset].id;
+        auto& map = sAssetMap[i];
+        auto assetIt = map.find(asset);
+        if (assetIt == map.end()) { continue; }
+        u32 id = assetIt->second.id;
         if (id < lowest) { lowest = id; }
-        if (sOverwriteMap.count(id)) {
-            id = sOverwriteMap[id];
+        auto idIt = sOverwriteMap.find(id);
+        if (idIt != sOverwriteMap.end()) {
+            id = idIt->second;
             if (id < lowest) { lowest = id; }
         }
     }
@@ -241,52 +241,11 @@ void DynOS_Model_OverwriteSlot(u32 srcSlot, u32 dstSlot) {
     sOverwriteMap[srcSlot] = dstSlot;
 }
 
-// Display lists need to be duplicated so they can be modified by mods
-// also to prevent trying to write to read only memory for vanilla display lists
-Gfx *DynOS_Model_Duplicate_DisplayList(Gfx* aGfx) {
-    if (!aGfx) { return nullptr; }
-
-    u32 size = gfx_get_size(aGfx) * sizeof(Gfx);
-    Gfx *gfxDuplicate = (Gfx *) malloc(size);
-    memcpy(gfxDuplicate, aGfx, size);
-
-    // Look for other display lists or vertices
-    for (u32 i = 0; i < size / sizeof(Gfx); i++) {
-        Gfx *cmd = gfxDuplicate + i;
-        u32 op = cmd->words.w0 >> 24;
-
-        // Duplicate referenced display lists
-        if (op == G_DL) {
-            cmd->words.w1 = (uintptr_t) DynOS_Model_Duplicate_DisplayList((Gfx *) cmd->words.w1);
-            if (C0(cmd, 16, 1) == G_DL_NOPUSH) { break; } // This is a branch (jump), end of display list
-        }
-
-        // Duplicate referenced vertices
-        if (op == G_VTX) {
-            u32 size = C0(cmd, 12, 8) * sizeof(Vtx);
-            Vtx *vtxDuplicate = (Vtx *) malloc(size);
-            memcpy(vtxDuplicate, (Vtx *) cmd->words.w1, size);
-            cmd->words.w1 = (uintptr_t) vtxDuplicate;
-            sCurrModelDuplicates->push_back(vtxDuplicate);
-        }
-    }
-
-    sCurrModelDuplicates->push_back(gfxDuplicate);
-
-    return gfxDuplicate;
-}
-
 void DynOS_Model_ClearPool(enum ModelPool aModelPool) {
     if (!sModelPools[aModelPool]) { return; }
 
     // schedule pool to be freed
     dynamic_pool_free_pool(sModelPools[aModelPool]);
-
-    // free scheduled duplicates
-    for (auto &duplicate : sScheduledFree[aModelPool]) {
-        free(duplicate);
-    }
-    sScheduledFree[aModelPool].clear();
 
     // clear overwrite
     if (aModelPool == MODEL_POOL_LEVEL) {
@@ -297,32 +256,24 @@ void DynOS_Model_ClearPool(enum ModelPool aModelPool) {
     auto& assetMap = sAssetMap[aModelPool];
     for (auto& asset : assetMap) {
         auto& info = asset.second;
-        if (sIdMap.count(info.id) == 0) { continue; }
+        auto idIt = sIdMap.find(info.id);
+        if (idIt == sIdMap.end()) { continue; }
+        auto& idMap = idIt->second;
 
         // preventing clearing permanent vanilla model slot
-        if (info.id <= VANILLA_ID_END && sIdMap.count(info.id) <= 1) {
+        if (info.id <= VANILLA_ID_END && idMap.size() <= 1) {
             if (sAssetMap[MODEL_POOL_PERMANENT].count(info.asset) > 0) {
                 continue;
             }
         }
 
         // erase from id map
-        auto& idMap = sIdMap[info.id];
         for (auto info2 = idMap.begin(); info2 != idMap.end(); ) {
             if (info.id == info2->id && info2->modelPool == aModelPool) {
                 info2 = idMap.erase(info2);
             } else {
                 info2++;
             }
-        }
-
-        // schedule duplicates to be freed
-        if (info.duplicates) {
-            for (auto &duplicate : *info.duplicates) {
-                sScheduledFree[aModelPool].push_back(duplicate);
-            }
-            delete info.duplicates;
-            info.duplicates = nullptr;
         }
     }
 

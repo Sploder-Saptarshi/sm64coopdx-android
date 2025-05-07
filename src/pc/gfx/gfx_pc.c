@@ -37,6 +37,8 @@
 #include "engine/lighting_engine.h"
 #include "pc/debug_context.h"
 
+#include "game/object_helpers.h"
+
 #define SUPPORT_CHECK(x) assert(x)
 
 // this is used for multi-textures
@@ -770,6 +772,8 @@ static float gfx_adjust_x_for_aspect_ratio(float x) {
 }
 
 static void OPTIMIZE_O3 gfx_sp_vertex(size_t n_vertices, size_t dest_index, const Vtx *vertices, bool luaVertexColor) {
+    if (!vertices) { return; }
+
     float globalLightCached[2][3];
     float vertexColorCached[3];
     if (rsp.geometry_mode & G_LIGHTING) {
@@ -777,9 +781,13 @@ static void OPTIMIZE_O3 gfx_sp_vertex(size_t n_vertices, size_t dest_index, cons
             for (int j = 0; j < 3; j++)
                 globalLightCached[i][j] = gLightingColor[i][j] / 255.0f;
         }
-    } else if (luaVertexColor) {
-        for (int i = 0; i < 3; i ++) {
-            vertexColorCached[i] = gVertexColor[i] / 255.0f;
+    }
+
+    if (luaVertexColor) {
+        if ((rsp.geometry_mode & G_PACKED_NORMALS_EXT) || (!(rsp.geometry_mode & G_LIGHTING))) {
+            for (int i = 0; i < 3; i ++) {
+                vertexColorCached[i] = gVertexColor[i] / 255.0f;
+            }
         }
     }
 
@@ -836,9 +844,37 @@ static void OPTIMIZE_O3 gfx_sp_vertex(size_t n_vertices, size_t dest_index, cons
 
             for (int32_t i = 0; i < rsp.current_num_lights - 1; i++) {
                 float intensity = 0;
-                intensity += vn->n[0] * rsp.current_lights_coeffs[i][0];
-                intensity += vn->n[1] * rsp.current_lights_coeffs[i][1];
-                intensity += vn->n[2] * rsp.current_lights_coeffs[i][2];
+                if (rsp.geometry_mode & G_PACKED_NORMALS_EXT) {
+                    // original f3dex3 algorithm translated to c (from fast64 source code)
+                    unsigned short packedNormal = vn->flag;
+                    int xo = packedNormal >> 8;
+                    int yo = packedNormal & 0xFF;
+    
+                    int x = xo & 0x7F;
+                    int y = yo & 0x7F;
+                    int z = x + y;
+                    int x2 = x ^ 0x7F;
+                    int y2 = y ^ 0x7F;
+                    z = z ^ 0x7F;
+                    if (z & 0x80) {
+                        x = x2;
+                        y = y2;
+                    }
+
+                    x = (xo & 0x80) ? -x : x;
+                    y = (yo & 0x80) ? -y : y;
+                    z = (z & 0x80) ? (z - 0x100) : z;
+                    SUPPORT_CHECK(absi(x) + absi(y) + absi(z) == 127);
+
+                    intensity += x * rsp.current_lights_coeffs[i][0];
+                    intensity += y * rsp.current_lights_coeffs[i][1];
+                    intensity += z * rsp.current_lights_coeffs[i][2];
+                } else {
+                    intensity += vn->n[0] * rsp.current_lights_coeffs[i][0];
+                    intensity += vn->n[1] * rsp.current_lights_coeffs[i][1];
+                    intensity += vn->n[2] * rsp.current_lights_coeffs[i][2];
+                }
+
                 intensity /= 127.0f;
                 if (intensity > 0.0f) {
                     r += intensity * rsp.current_lights[i].col[0] * globalLightCached[0][0];
@@ -851,6 +887,21 @@ static void OPTIMIZE_O3 gfx_sp_vertex(size_t n_vertices, size_t dest_index, cons
             d->color.g = g > 255.0f ? 255 : (uint8_t)g;
             d->color.b = b > 255.0f ? 255 : (uint8_t)b;
 
+            if (rsp.geometry_mode & G_PACKED_NORMALS_EXT) {
+                float vtxR = (v->cn[0] / 255.0f);
+                float vtxG = (v->cn[1] / 255.0f);
+                float vtxB = (v->cn[2] / 255.0f);
+                if (luaVertexColor) {
+                    d->color.r *= vtxR * vertexColorCached[0];
+                    d->color.g *= vtxG * vertexColorCached[1];
+                    d->color.b *= vtxB * vertexColorCached[2];
+                } else {
+                    d->color.r *= vtxR;
+                    d->color.g *= vtxG;
+                    d->color.b *= vtxB;
+                }
+            }
+
             if (rsp.geometry_mode & G_TEXTURE_GEN) {
                 float dotx = 0, doty = 0;
                 dotx += vn->n[0] * rsp.current_lookat_coeffs[0][0];
@@ -862,6 +913,17 @@ static void OPTIMIZE_O3 gfx_sp_vertex(size_t n_vertices, size_t dest_index, cons
 
                 U = (int32_t)((dotx / 127.0f + 1.0f) / 4.0f * rsp.texture_scaling_factor.s);
                 V = (int32_t)((doty / 127.0f + 1.0f) / 4.0f * rsp.texture_scaling_factor.t);
+            }
+
+            if (rsp.geometry_mode & G_LIGHTING_ENGINE_EXT) {
+                Color color;
+                CTX_BEGIN(CTX_LIGHTING);
+                le_calculate_lighting_color(((Vtx_t*)v)->ob, color, 1.0f);
+                CTX_END(CTX_LIGHTING);
+
+                d->color.r *= color[0] / 255.0f;
+                d->color.g *= color[1] / 255.0f;
+                d->color.b *= color[2] / 255.0f;
             }
         } else if (rsp.geometry_mode & G_LIGHTING_ENGINE_EXT) {
             Color color;
@@ -993,17 +1055,21 @@ static void OPTIMIZE_O3 gfx_sp_tri1(uint8_t vtx1_idx, uint8_t vtx2_idx, uint8_t 
     }
 
     if (rdp.viewport_or_scissor_changed) {
-        if (memcmp(&rdp.viewport, &rendering_state.viewport, sizeof(rdp.viewport)) != 0) {
+        static uint32_t x_adjust_4by3_prev;
+        if (memcmp(&rdp.viewport, &rendering_state.viewport, sizeof(rdp.viewport)) != 0
+            || x_adjust_4by3_prev != gfx_current_dimensions.x_adjust_4by3) {
             gfx_flush();
-            gfx_rapi->set_viewport(rdp.viewport.x, rdp.viewport.y, rdp.viewport.width, rdp.viewport.height);
+            gfx_rapi->set_viewport(rdp.viewport.x + gfx_current_dimensions.x_adjust_4by3, rdp.viewport.y, rdp.viewport.width, rdp.viewport.height);
             rendering_state.viewport = rdp.viewport;
         }
-        if (memcmp(&rdp.scissor, &rendering_state.scissor, sizeof(rdp.scissor)) != 0) {
+        if (memcmp(&rdp.scissor, &rendering_state.scissor, sizeof(rdp.scissor)) != 0
+            || x_adjust_4by3_prev != gfx_current_dimensions.x_adjust_4by3) {
             gfx_flush();
-            gfx_rapi->set_scissor(rdp.scissor.x, rdp.scissor.y, rdp.scissor.width, rdp.scissor.height);
+            gfx_rapi->set_scissor(rdp.scissor.x + gfx_current_dimensions.x_adjust_4by3, rdp.scissor.y, rdp.scissor.width, rdp.scissor.height);
             rendering_state.scissor = rdp.scissor;
         }
         rdp.viewport_or_scissor_changed = false;
+        x_adjust_4by3_prev = gfx_current_dimensions.x_adjust_4by3;
     }
 
     struct CombineMode* cm = &rdp.combine_mode;
@@ -1621,6 +1687,8 @@ static inline void *seg_addr(uintptr_t w1) {
 #define C1(pos, width) ((cmd->words.w1 >> (pos)) & ((1U << width) - 1))
 
 static void OPTIMIZE_O3 gfx_run_dl(Gfx* cmd) {
+    if (!cmd) { return; }
+
     for (;;) {
         uint32_t opcode = cmd->words.w0 >> 24;
 
@@ -1774,6 +1842,16 @@ static void OPTIMIZE_O3 gfx_run_dl(Gfx* cmd) {
                 int32_t lrx, lry, tile, ulx, uly;
                 uint32_t uls, ult, dsdx, dtdy;
                 tile = 0;
+#ifdef GBI_NO_MULTI_COMMANDS
+                lrx = (int32_t) (C0(13, 11) << 21) >> 19;
+                lry = (int32_t) (C0(4, 9) << 23) >> 21;
+                ulx = (int32_t) (C1(21, 11) << 21) >> 19;
+                uly = (int32_t) (C1(12, 9) << 23) >> 21;
+                uls = 0;
+                ult = 0;
+                dsdx = C1(4, 8) << 6;
+                dtdy = (C1(0, 4) << 10) | (C0(0, 4) << 6);
+#else
 #ifdef F3DEX_GBI_2E
                 lrx = (int32_t)(C0(0, 24) << 8) >> 8;
                 lry = (int32_t)(C1(0, 24) << 8) >> 8;
@@ -1798,10 +1876,22 @@ static void OPTIMIZE_O3 gfx_run_dl(Gfx* cmd) {
                 dsdx = C1(16, 16);
                 dtdy = C1(0, 16);
 #endif
+#endif
                 gfx_dp_texture_rectangle(ulx, uly, lrx, lry, tile, uls, ult, dsdx, dtdy, opcode == G_TEXRECTFLIP);
                 break;
             }
             case G_FILLRECT:
+#ifdef GBI_NO_MULTI_COMMANDS
+            {
+                int32_t lrx, lry, ulx, uly;
+                uly = (int32_t) (C0(12, 12) << 20) >> 18;
+                lry = (int32_t) (C0(0, 12) << 20) >> 18;
+                ulx = (int32_t) (C1(16, 16) << 16) >> 14;
+                lrx = (int32_t) (C1(0, 16) << 16) >> 14;
+                gfx_dp_fill_rectangle(ulx, uly, lrx, lry);
+                break;
+            }
+#else
 #ifdef F3DEX_GBI_2E
             {
                 int32_t lrx, lry, ulx, uly;
@@ -1816,6 +1906,7 @@ static void OPTIMIZE_O3 gfx_run_dl(Gfx* cmd) {
 #else
                 gfx_dp_fill_rectangle(C1(12, 12), C1(0, 12), C0(12, 12), C0(0, 12));
                 break;
+#endif
 #endif
             case G_SETSCISSOR:
                 gfx_dp_set_scissor(C1(24, 2), C0(12, 12), C0(0, 12), C1(12, 12), C1(0, 12));
@@ -1842,6 +1933,9 @@ static void gfx_sp_reset(void) {
 
 void gfx_get_dimensions(uint32_t *width, uint32_t *height) {
     gfx_wapi->get_dimensions(width, height);
+    if (configForce4By3) {
+        *width = gfx_current_dimensions.aspect_ratio * *height;
+    }
 }
 
 void gfx_init(struct GfxWindowManagerAPI *wapi, struct GfxRenderingAPI *rapi, const char *window_title) {
@@ -1871,6 +1965,11 @@ void gfx_start_frame(void) {
         // Avoid division by zero
         gfx_current_dimensions.height = 1;
     }
+    if (configForce4By3
+        && ((4.0f / 3.0f) * gfx_current_dimensions.height) < gfx_current_dimensions.width) {
+        gfx_current_dimensions.x_adjust_4by3 = (gfx_current_dimensions.width - (4.0f / 3.0f) * gfx_current_dimensions.height) / 2;
+        gfx_current_dimensions.width = (4.0f / 3.0f) * gfx_current_dimensions.height;
+    } else { gfx_current_dimensions.x_adjust_4by3 = 0; }
     gfx_current_dimensions.aspect_ratio = ((float)gfx_current_dimensions.width / (float)gfx_current_dimensions.height);
     gfx_current_dimensions.x_adjust_ratio = (4.0f / 3.0f) / gfx_current_dimensions.aspect_ratio;
 }

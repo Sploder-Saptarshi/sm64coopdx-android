@@ -664,9 +664,9 @@ void network_shutdown(bool sendLeaving, bool exiting, bool popup, bool reconnect
         gNetworkType = NT_NONE;
     }
 
-    dynos_model_clear_pool(MODEL_POOL_SESSION);
-
     if (exiting) { return; }
+
+    dynos_model_clear_pool(MODEL_POOL_SESSION);
 
     // reset other stuff
     extern u8* gOverrideEeprom;
@@ -677,6 +677,7 @@ void network_shutdown(bool sendLeaving, bool exiting, bool popup, bool reconnect
     gOverrideNear = 0;
     gOverrideFar = 0;
     gOverrideFOV = 0;
+    gRoomOverride = -1;
     gCurrActStarNum = 0;
     gCurrActNum = 0;
     gCurrCreditsEntry = NULL;
@@ -702,7 +703,6 @@ void network_shutdown(bool sendLeaving, bool exiting, bool popup, bool reconnect
     extern s16 gChangeLevel;
     gChangeLevel = LEVEL_CASTLE_GROUNDS;
     network_player_init();
-    camera_set_use_course_specific_settings(true);
     gMarioStates[0].cap = 0;
     gMarioStates[0].input = 0;
     extern s16 gTTCSpeedSetting;

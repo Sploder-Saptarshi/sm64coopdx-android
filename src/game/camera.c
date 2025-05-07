@@ -41,6 +41,7 @@
 #define CBUTTON_MASK (U_CBUTTONS | D_CBUTTONS | L_CBUTTONS | R_CBUTTONS)
 
 static u8 sSoftResettingCamera = FALSE;
+static u8 sCCSSChangedByMod = FALSE;
 u8 gCameraUseCourseSpecificSettings = TRUE;
 u8 gOverrideFreezeCamera = FALSE;
 u8 gOverrideAllowToxicGasCamera = FALSE;
@@ -69,6 +70,8 @@ void romhack_camera_reset_settings(void) {
     gRomhackCameraSettings.zoomedInHeight = 300;
     gRomhackCameraSettings.zoomedOutHeight = 450;
     gRomhackCameraSettings.modsOnly = FALSE;
+    gCameraUseCourseSpecificSettings = TRUE;
+    sCCSSChangedByMod = FALSE;
 }
 
 /**
@@ -532,11 +535,6 @@ void skip_camera_interpolation(void) {
     gLakituState.skipCameraInterpolationTimestamp = gGlobalTimer;
     extern s32 gCamSkipInterp;
     gCamSkipInterp = 1;
-}
-
-static void set_gcamera(struct Camera *c) {
-    gCamera = c;
-    if (gCameraCObject != NULL) { gCameraCObject->pointer = c; }
 }
 
 /**
@@ -3175,7 +3173,7 @@ void update_camera(struct Camera *c) {
     if (!c) { return; }
     UNUSED u8 unused[24];
 
-    set_gcamera(c);
+    gCamera = c;
     update_camera_hud_status(c);
 
     if ((gOverrideFreezeCamera || get_first_person_enabled()) && !gDjuiInMainMenu) {
@@ -3417,7 +3415,7 @@ void soft_reset_camera(struct Camera* c) {
  */
 void reset_camera(struct Camera *c) {
     if (!c) { return; }
-    set_gcamera(c);
+    gCamera = c;
     gCameraMovementFlags = 0;
     s2ndRotateFlags = 0;
     sStatusFlags = 0;
@@ -12181,6 +12179,7 @@ void obj_rotate_towards_point(struct Object *o, Vec3f point, s16 pitchOff, s16 y
 
 void camera_set_use_course_specific_settings(u8 enable) {
     gCameraUseCourseSpecificSettings = enable;
+    sCCSSChangedByMod = TRUE;
 }
 
 #include "behaviors/intro_peach.inc.c"
@@ -12214,15 +12213,19 @@ s32 snap_to_45_degrees(s16 angle) {
 
 void romhack_camera_init_settings(void) {
     if (gRomhackCameraSettings.modsOnly) { return; }
-    enum RomhackCameraOverride override = RCO_DISABLE;
+    enum RomhackCameraOverride override = RCO_NONE;
     if (configEnableRomhackCamera == RCE_AUTOMATIC) {
         override = configRomhackCameraBowserFights ? RCO_ALL : RCO_ALL_EXCEPT_BOWSER;
     } else if (configEnableRomhackCamera == RCE_ON) {
         override = configRomhackCameraBowserFights ? RCO_ALL_INCLUDING_VANILLA : RCO_ALL_VANILLA_EXCEPT_BOWSER;
+    } else if (configEnableRomhackCamera == RCE_OFF && gRomhackCameraSettings.enable != RCO_NONE) {
+        override = RCO_DISABLE;
     }
 
     gRomhackCameraSettings.enable = override;
-    gCameraUseCourseSpecificSettings = (override == RCO_DISABLE && dynos_level_is_vanilla_level(gCurrLevelNum));
+    if (!sCCSSChangedByMod) {
+        gCameraUseCourseSpecificSettings = dynos_level_is_vanilla_level(gCurrLevelNum);
+    }
     gRomhackCameraSettings.collisions = configRomhackCameraHasCollision;
     gRomhackCameraSettings.centering = configRomhackCameraHasCentering;
     gRomhackCameraSettings.dpad = configRomhackCameraDPadBehavior;
@@ -12381,9 +12384,9 @@ void mode_rom_hack_camera(struct Camera *c) {
         if (gMarioStates[0].controller->buttonPressed & U_JPAD) {
             sRomHackYaw = DEGREES(180 + 90) - gMarioStates[0].faceAngle[1];
         } else if (gMarioStates[0].controller->buttonDown & L_JPAD) {
-            sRomHackYaw -= DEGREES(0.5) * (camera_config_is_x_inverted() ? -1 : 1);
+            sRomHackYaw -= DEGREES(0.5) * (camera_config_is_x_inverted() ? 1 : -1);
         } else if (gMarioStates[0].controller->buttonDown & R_JPAD) {
-            sRomHackYaw += DEGREES(0.5) * (camera_config_is_x_inverted() ? -1 : 1);
+            sRomHackYaw += DEGREES(0.5) * (camera_config_is_x_inverted() ? 1 : -1);
         } else if (gMarioStates[0].controller->buttonPressed & D_JPAD) {
             sRomHackYaw = snap_to_45_degrees(sRomHackYaw);
         }
@@ -12533,4 +12536,3 @@ s32 update_rom_hack_camera(struct Camera *c, Vec3f focus, Vec3f pos) {
     c->nextYaw = c->yaw;
     return camYaw;
 }
-

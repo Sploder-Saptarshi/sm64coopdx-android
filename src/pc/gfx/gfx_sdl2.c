@@ -75,6 +75,8 @@ static void (*touch_motion_callback)(void* event);
 static void (*touch_up_callback)(void* event);
 #endif
 
+static void (*m_scroll)(float, float) = NULL;
+
 #define IS_FULLSCREEN() ((SDL_GetWindowFlags(wnd) & SDL_WINDOW_FULLSCREEN_DESKTOP) != 0)
 
 static inline void gfx_sdl_set_vsync(const bool enabled) {
@@ -203,6 +205,11 @@ static void gfx_sdl_onkeyup(int scancode) {
         kb_key_up(translate_sdl_scancode(scancode));
 }
 
+static void gfx_sdl_onscroll(float x, float y) {
+    if (m_scroll)
+        m_scroll(x, y);
+}
+
 static void gfx_sdl_ondropfile(char* path) {
 #ifdef _WIN32
     char portable_path[SYS_MAX_PATH];
@@ -281,6 +288,9 @@ static void gfx_sdl_handle_events(void) {
                 gfx_sdl_fingerup(event.tfinger);
                 break;
 #endif
+            case SDL_MOUSEWHEEL:
+                gfx_sdl_onscroll(event.wheel.preciseX, event.wheel.preciseY);
+                break;
             case SDL_WINDOWEVENT:
                 if (!IS_FULLSCREEN()) {
                     switch (event.window.event) {
@@ -330,6 +340,9 @@ void gfx_sdl_set_touchscreen_callbacks(void (*down)(void* event), void (*motion)
     touch_up_callback = up;
 }
 #endif
+static void gfx_sdl_set_scroll_callback(void (*on_scroll)(float, float)) {
+    m_scroll = on_scroll;
+}
 
 static bool gfx_sdl_start_frame(void) {
     return true;
@@ -400,6 +413,7 @@ struct GfxWindowManagerAPI gfx_sdl = {
 #ifdef TOUCH_CONTROLS
     gfx_sdl_set_touchscreen_callbacks,
 #endif
+    gfx_sdl_set_scroll_callback,
     gfx_sdl_main_loop,
     gfx_sdl_get_dimensions,
     gfx_sdl_handle_events,

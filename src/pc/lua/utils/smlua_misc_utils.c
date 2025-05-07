@@ -88,6 +88,11 @@ bool djui_attempting_to_open_playerlist(void) {
     return gAttemptingToOpenPlayerlist;
 }
 
+u8 djui_get_playerlist_page_index(void) {
+    extern u8 sPageIndex;
+    return sPageIndex;
+}
+
 enum DjuiFontType djui_menu_get_font(void) {
     return configDjuiThemeFont == 0 ? FONT_NORMAL : FONT_ALIASED;
 }
@@ -479,16 +484,16 @@ void set_volume_env(f32 volume) {
 
 ///
 
-f32 get_environment_region(u8 index) {
-    s32 idx = 6 * index;
+s16 get_environment_region(u8 index) {
+    u8 idx = 6 * index;
     if (gEnvironmentRegions != NULL && index > 0 && index <= gEnvironmentRegions[0] && gEnvironmentRegionsLength > idx) {
         return gEnvironmentRegions[idx];
     }
     return gLevelValues.floorLowerLimit;
 }
 
-void set_environment_region(u8 index, s32 value) {
-    s32 idx = 6 * index;
+void set_environment_region(u8 index, s16 value) {
+    u8 idx = 6 * index;
     if (gEnvironmentRegions != NULL && index > 0 && index <= gEnvironmentRegions[0] && gEnvironmentRegionsLength > idx) {
         gEnvironmentRegions[idx] = value;
     }

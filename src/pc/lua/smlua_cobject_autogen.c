@@ -1229,7 +1229,7 @@ static struct LuaObjectField sGraphNodeStartFields[LUA_GRAPH_NODE_START_FIELD_CO
 #define LUA_GRAPH_NODE_SWITCH_CASE_FIELD_COUNT 4
 static struct LuaObjectField sGraphNodeSwitchCaseFields[LUA_GRAPH_NODE_SWITCH_CASE_FIELD_COUNT] = {
     { "fnNode",       LVT_COBJECT, offsetof(struct GraphNodeSwitchCase, fnNode),       true,  LOT_FNGRAPHNODE, 1, sizeof(struct FnGraphNode) },
-    { "numCases",     LVT_S16,     offsetof(struct GraphNodeSwitchCase, numCases),     true,  LOT_NONE,        1, sizeof(s16)                },
+    { "parameter",    LVT_S16,     offsetof(struct GraphNodeSwitchCase, parameter),    false, LOT_NONE,        1, sizeof(s16)                },
     { "selectedCase", LVT_S16,     offsetof(struct GraphNodeSwitchCase, selectedCase), false, LOT_NONE,        1, sizeof(s16)                },
     { "unused",       LVT_S32,     offsetof(struct GraphNodeSwitchCase, unused),       true,  LOT_NONE,        1, sizeof(s32)                },
 };
@@ -1327,7 +1327,7 @@ static struct LuaObjectField sLakituStateFields[LUA_LAKITU_STATE_FIELD_COUNT] = 
     { "yaw",                              LVT_S16,     offsetof(struct LakituState, yaw),                              false, LOT_NONE,  1,  sizeof(s16)   },
 };
 
-#define LUA_LEVEL_VALUES_FIELD_COUNT 51
+#define LUA_LEVEL_VALUES_FIELD_COUNT 52
 static struct LuaObjectField sLevelValuesFields[LUA_LEVEL_VALUES_FIELD_COUNT] = {
     { "bubbleOnDeathBarrierInCapStages",  LVT_U8,      offsetof(struct LevelValues, bubbleOnDeathBarrierInCapStages),  false, LOT_NONE,          1, sizeof(u8)                   },
     { "cellHeightLimit",                  LVT_S16,     offsetof(struct LevelValues, cellHeightLimit),                  false, LOT_NONE,          1, sizeof(s16)                  },
@@ -1343,6 +1343,7 @@ static struct LuaObjectField sLevelValuesFields[LUA_LEVEL_VALUES_FIELD_COUNT] = 
     { "fixCollisionBugsGroundPoundBonks", LVT_U8,      offsetof(struct LevelValues, fixCollisionBugsGroundPoundBonks), false, LOT_NONE,          1, sizeof(u8)                   },
     { "fixCollisionBugsPickBestWall",     LVT_U8,      offsetof(struct LevelValues, fixCollisionBugsPickBestWall),     false, LOT_NONE,          1, sizeof(u8)                   },
     { "fixCollisionBugsRoundedCorners",   LVT_U8,      offsetof(struct LevelValues, fixCollisionBugsRoundedCorners),   false, LOT_NONE,          1, sizeof(u8)                   },
+    { "fixInvalidShellRides",             LVT_U8,      offsetof(struct LevelValues, fixInvalidShellRides),             false, LOT_NONE,          1, sizeof(u8)                   },
     { "fixVanishFloors",                  LVT_U8,      offsetof(struct LevelValues, fixVanishFloors),                  false, LOT_NONE,          1, sizeof(u8)                   },
     { "floatingStarDance",                LVT_U8,      offsetof(struct LevelValues, floatingStarDance),                false, LOT_NONE,          1, sizeof(u8)                   },
     { "floorLowerLimit",                  LVT_S16,     offsetof(struct LevelValues, floorLowerLimit),                  false, LOT_NONE,          1, sizeof(s16)                  },
@@ -2655,12 +2656,6 @@ static struct LuaObjectField sStarsNeededForDialogFields[LUA_STARS_NEEDED_FOR_DI
     { "dialog6", LVT_U16, offsetof(struct StarsNeededForDialog, dialog6), false, LOT_NONE, 1, sizeof(u16) },
 };
 
-#define LUA_STRUCT802_A272_C_FIELD_COUNT 2
-static struct LuaObjectField sStruct802A272CFields[LUA_STRUCT802_A272_C_FIELD_COUNT] = {
-    { "vecF", LVT_COBJECT, offsetof(struct Struct802A272C, vecF), true, LOT_VEC3F, 1, sizeof(Vec3f) },
-    { "vecS", LVT_COBJECT, offsetof(struct Struct802A272C, vecS), true, LOT_VEC3S, 1, sizeof(Vec3s) },
-};
-
 #define LUA_SURFACE_FIELD_COUNT 16
 static struct LuaObjectField sSurfaceFields[LUA_SURFACE_FIELD_COUNT] = {
     { "flags",             LVT_S8,        offsetof(struct Surface, flags),             false, LOT_NONE,   1, sizeof(s8)             },
@@ -2703,12 +2698,21 @@ static struct LuaObjectField sTransitionInfoFields[LUA_TRANSITION_INFO_FIELD_COU
     { "posYaw",     LVT_S16,     offsetof(struct TransitionInfo, posYaw),     false, LOT_NONE,  1, sizeof(s16)   },
 };
 
-#define LUA_VTX_FIELD_COUNT 4
+#define LUA_VTX_FIELD_COUNT 13
 static struct LuaObjectField sVtxFields[LUA_VTX_FIELD_COUNT] = {
-    { "cn",   LVT_U8,  offsetof(Vtx_t, cn),   false, LOT_NONE, 4, sizeof(unsigned char)  },
-    { "flag", LVT_U16, offsetof(Vtx_t, flag), false, LOT_NONE, 1, sizeof(unsigned short) },
-    { "ob",   LVT_F32, offsetof(Vtx_t, ob),   false, LOT_NONE, 3, sizeof(float)          },
-    { "tc",   LVT_S16, offsetof(Vtx_t, tc),   false, LOT_NONE, 2, sizeof(short)          },
+    { "a",    LVT_U8,  offsetof(Vtx_L, a),    false, LOT_NONE, 1, sizeof(unsigned char)  },
+    { "b",    LVT_U8,  offsetof(Vtx_L, b),    false, LOT_NONE, 1, sizeof(unsigned char)  },
+    { "flag", LVT_U16, offsetof(Vtx_L, flag), false, LOT_NONE, 1, sizeof(unsigned short) },
+    { "g",    LVT_U8,  offsetof(Vtx_L, g),    false, LOT_NONE, 1, sizeof(unsigned char)  },
+    { "nx",   LVT_S8,  offsetof(Vtx_L, nx),   false, LOT_NONE, 1, sizeof(signed char)    },
+    { "ny",   LVT_S8,  offsetof(Vtx_L, ny),   false, LOT_NONE, 1, sizeof(signed char)    },
+    { "nz",   LVT_S8,  offsetof(Vtx_L, nz),   false, LOT_NONE, 1, sizeof(signed char)    },
+    { "r",    LVT_U8,  offsetof(Vtx_L, r),    false, LOT_NONE, 1, sizeof(unsigned char)  },
+    { "tu",   LVT_S16, offsetof(Vtx_L, tu),   false, LOT_NONE, 1, sizeof(short)          },
+    { "tv",   LVT_S16, offsetof(Vtx_L, tv),   false, LOT_NONE, 1, sizeof(short)          },
+    { "x",    LVT_F32, offsetof(Vtx_L, x),    false, LOT_NONE, 1, sizeof(float)          },
+    { "y",    LVT_F32, offsetof(Vtx_L, y),    false, LOT_NONE, 1, sizeof(float)          },
+    { "z",    LVT_F32, offsetof(Vtx_L, z),    false, LOT_NONE, 1, sizeof(float)          },
 };
 
 #define LUA_VTX__INTERP_FIELD_COUNT 2
@@ -2787,12 +2791,6 @@ static struct LuaObjectField sWaypointFields[LUA_WAYPOINT_FIELD_COUNT] = {
 static struct LuaObjectField sWhirlpoolFields[LUA_WHIRLPOOL_FIELD_COUNT] = {
     { "pos",      LVT_COBJECT, offsetof(struct Whirlpool, pos),      true,  LOT_VEC3S, 1, sizeof(Vec3s) },
     { "strength", LVT_S16,     offsetof(struct Whirlpool, strength), false, LOT_NONE,  1, sizeof(s16)   },
-};
-
-#define LUA_STRUCT802_A1230_FIELD_COUNT 2
-static struct LuaObjectField sstruct802A1230Fields[LUA_STRUCT802_A1230_FIELD_COUNT] = {
-    { "unk00", LVT_S16, offsetof(struct struct802A1230, unk00), false, LOT_NONE, 1, sizeof(s16) },
-    { "unk02", LVT_S16, offsetof(struct struct802A1230, unk02), false, LOT_NONE, 1, sizeof(s16) },
 };
 
 struct LuaObjectTable sLuaObjectAutogenTable[LOT_AUTOGEN_MAX - LOT_AUTOGEN_MIN] = {
@@ -2890,7 +2888,6 @@ struct LuaObjectTable sLuaObjectAutogenTable[LOT_AUTOGEN_MAX - LOT_AUTOGEN_MIN] 
     { LOT_SPAWNPARTICLESINFO,           sSpawnParticlesInfoFields,           LUA_SPAWN_PARTICLES_INFO_FIELD_COUNT            },
     { LOT_STARPOSITIONS,                sStarPositionsFields,                LUA_STAR_POSITIONS_FIELD_COUNT                  },
     { LOT_STARSNEEDEDFORDIALOG,         sStarsNeededForDialogFields,         LUA_STARS_NEEDED_FOR_DIALOG_FIELD_COUNT         },
-    { LOT_STRUCT802A272C,               sStruct802A272CFields,               LUA_STRUCT802_A272_C_FIELD_COUNT                },
     { LOT_SURFACE,                      sSurfaceFields,                      LUA_SURFACE_FIELD_COUNT                         },
     { LOT_TEXTUREINFO,                  sTextureInfoFields,                  LUA_TEXTURE_INFO_FIELD_COUNT                    },
     { LOT_TRANSITIONINFO,               sTransitionInfoFields,               LUA_TRANSITION_INFO_FIELD_COUNT                 },
@@ -2903,7 +2900,6 @@ struct LuaObjectTable sLuaObjectAutogenTable[LOT_AUTOGEN_MAX - LOT_AUTOGEN_MIN] 
     { LOT_WATERDROPLETPARAMS,           sWaterDropletParamsFields,           LUA_WATER_DROPLET_PARAMS_FIELD_COUNT            },
     { LOT_WAYPOINT,                     sWaypointFields,                     LUA_WAYPOINT_FIELD_COUNT                        },
     { LOT_WHIRLPOOL,                    sWhirlpoolFields,                    LUA_WHIRLPOOL_FIELD_COUNT                       },
-    { LOT_STRUCT802A1230,               sstruct802A1230Fields,               LUA_STRUCT802_A1230_FIELD_COUNT                 },
 };
 
 const char *sLuaLotNames[] = {
@@ -3012,7 +3008,6 @@ const char *sLuaLotNames[] = {
 	[LOT_SPAWNPARTICLESINFO] = "SpawnParticlesInfo",
 	[LOT_STARPOSITIONS] = "StarPositions",
 	[LOT_STARSNEEDEDFORDIALOG] = "StarsNeededForDialog",
-	[LOT_STRUCT802A272C] = "Struct802A272C",
 	[LOT_SURFACE] = "Surface",
 	[LOT_TEXTUREINFO] = "TextureInfo",
 	[LOT_TRANSITIONINFO] = "TransitionInfo",
@@ -3025,7 +3020,6 @@ const char *sLuaLotNames[] = {
 	[LOT_WATERDROPLETPARAMS] = "WaterDropletParams",
 	[LOT_WAYPOINT] = "Waypoint",
 	[LOT_WHIRLPOOL] = "Whirlpool",
-	[LOT_STRUCT802A1230] = "struct802A1230",
 };
 
 const char *smlua_get_lot_name(u16 lot) {

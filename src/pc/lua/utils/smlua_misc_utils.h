@@ -56,6 +56,8 @@ void djui_reset_popup_disabled_override(void);
 bool djui_is_playerlist_open(void);
 /* |description|Checks if the DJUI playerlist is attempting to be opened|descriptionEnd| */
 bool djui_attempting_to_open_playerlist(void);
+/* |description|Gets the DJUI playerlist's page index|descriptionEnd| */
+u8 djui_get_playerlist_page_index(void);
 /* |description|Gets the DJUI menu font|descriptionEnd| */
 enum DjuiFontType djui_menu_get_font(void);
 /* |description|Gets the DJUI menu theme|descriptionEnd| */
@@ -94,7 +96,7 @@ void hud_show(void);
 /* |description|Checks if the HUD is hidden|descriptionEnd| */
 bool hud_is_hidden(void);
 /* |description|Gets a HUD display value|descriptionEnd| */
-s32  hud_get_value(enum HudDisplayValue type);
+s32 hud_get_value(enum HudDisplayValue type);
 /* |description|Sets a HUD display value|descriptionEnd| */
 void hud_set_value(enum HudDisplayValue type, s32 value);
 /* |description|Renders a power meter on the HUD|descriptionEnd| */
@@ -140,9 +142,6 @@ void movtexqc_register(const char* name, s16 level, s16 area, s16 type);
 s16 get_water_level(u8 index);
 /* |description|Sets the water level in an area corresponding to `index` (0-indexed)|descriptionEnd| */
 void set_water_level(u8 index, s16 height, bool sync);
-
-/* |description|Plays a screen transition|descriptionEnd| */
-void play_transition(s16 transType, s16 time, u8 red, u8 green, u8 blue);
 
 /* |description|Checks if a course is a main course and not the castle or secret levels|descriptionEnd| */
 bool course_is_main_course(u16 courseNum);
@@ -191,9 +190,9 @@ void set_volume_sfx(f32 volume);
 void set_volume_env(f32 volume);
 
 /* |description|Gets an environment region (gas/water boxes) height value|descriptionEnd| */
-f32 get_environment_region(u8 index);
+s16 get_environment_region(u8 index);
 /* |description|Sets an environment region (gas/water boxes) height value|descriptionEnd| */
-void set_environment_region(u8 index, s32 value);
+void set_environment_region(u8 index, s16 value);
 
 /* |description|Checks if a file exists inside of a mod|descriptionEnd| */
 bool mod_file_exists(const char* filename);
