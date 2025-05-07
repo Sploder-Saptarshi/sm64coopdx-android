@@ -515,28 +515,28 @@ ifeq ($(filter clean distclean print-%,$(MAKECMDGOALS)),)
   endif
 
   # Make liblua
-  # ifeq ($(TARGET_ANDROID),1)
+  ifeq ($(TARGET_ANDROID),1)
     DUMMY != $(MAKE) -C $(LIBLUA_DIR) $(LUA_PLATFORM) >&2 || echo FAIL
     ifeq ($(DUMMY),FAIL)
       $(error Failed to build lua)
     endif
-  # endif
+  endif
 
   # Make coopnet
-  # ifeq ($(TARGET_ANDROID),1)
+  ifeq ($(TARGET_ANDROID),1)
     DUMMY != $(MAKE) -C $(COOPNET_DIR) >&2 || echo FAIL
     ifeq ($(DUMMY),FAIL)
       $(error Failed to build coopnet)
     endif
-  # endif
+  endif
 
   # Make zlib
-  # ifeq ($(TARGET_ANDROID),1)
+  ifeq ($(TARGET_ANDROID),1)
     DUMMY != $(MAKE) -C $(ZLIB_DIR) libz.a >&2 || echo FAIL
     ifeq ($(DUMMY),FAIL)
       $(error Failed to build zlib)
     endif
-  # endif
+  endif
 
   $(info Building Game...)
 
