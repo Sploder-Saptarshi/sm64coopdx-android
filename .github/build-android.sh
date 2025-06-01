@@ -36,7 +36,7 @@ make -C lib/src/lua -j$(nproc) linux || exit 1
 # Set the number of retries for 'armeabi-v7a' architecture
 if [ "$TARGET_ANDROID_ARCH" == "armeabi-v7a" ]; then
   attempt=0
-  max_attempts=3
+  max_attempts=10
   until [ $attempt -ge $max_attempts ]
   do
     echo "Attempt $((attempt+1)) of $max_attempts..."
