@@ -195,7 +195,7 @@ jobs:
 
             - name: Install dependencies
               run: |
-                brew install make mingw-w64 sdl2 pkg-config glew glfw3 coreutils
+                brew install make mingw-w64 sdl2 glew glfw3 coreutils
 
             - name: Copy ROM using actions secret
               run: |
@@ -235,7 +235,7 @@ jobs:
 
             - name: Install dependencies
               run: |
-                brew install make mingw-w64 gcc@9 sdl2 pkg-config glew glfw3 coreutils
+                brew install make mingw-w64 gcc@9 sdl2 glew glfw3 coreutils
 
             - name: Copy ROM using actions secret
               run: |
