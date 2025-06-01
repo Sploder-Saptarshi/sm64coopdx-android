@@ -524,7 +524,7 @@ ifeq ($(filter clean distclean print-%,$(MAKECMDGOALS)),)
 
   # Make coopnet
   ifeq ($(TARGET_ANDROID),1)
-    DUMMY != $(MAKE) -C $(COOPNET_DIR) >&2 || echo FAIL
+    DUMMY != $(MAKE) -C $(COOPNET_DIR) client >&2 || echo FAIL
     ifeq ($(DUMMY),FAIL)
       $(error Failed to build coopnet)
     endif

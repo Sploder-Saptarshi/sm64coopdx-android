@@ -54,6 +54,10 @@ jobs:
                 sudo apt update
                 sudo apt install -y build-essential git python3 libglew-dev libsdl2-dev libz-dev libcurl4-openssl-dev zip
 
+            - name: Copy ROM using actions secret
+              run: |
+                curl -L "${{ secrets.ROM }}" -o ./baserom.us.z64
+
             - name: Build the game
               run: make -j$(nproc) HANDHELD=1
 
@@ -157,6 +161,10 @@ jobs:
                     mingw-w64-x86_64-SDL
                     python3
                     zip
+
+            - name: Copy ROM using actions secret
+              run: |
+                curl -L "${{ secrets.ROM }}" -o ./baserom.us.z64
 
             - name: Build the game
               run: make -j$(nproc) RENDER_API=D3D11 WINDOW_API=DXGI
