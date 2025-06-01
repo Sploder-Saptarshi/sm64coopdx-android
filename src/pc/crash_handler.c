@@ -20,6 +20,8 @@ struct PcDebug gPcDebug = {
         0x9A2269E87B26BE68,
         0x0E76DE227D813019,
         0x12ABA8362D430002,
+        0x0BF8F9C076430007,
+        0x0BFA2492BA430011
     },
     .id = DEFAULT_ID,
     .bhvOffset = /* 0x12 */ 0,
