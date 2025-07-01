@@ -559,7 +559,7 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorC
     } else {
         prg->used_lightmap = false;
     }
-    
+
     prg->uniform_locations[6] = glGetUniformLocation(shader_program, "uFilter");
 
     return prg;
@@ -707,7 +707,7 @@ static void gfx_opengl_init(void) {
         sys_fatal("OpenGL 2.1+ is required.\nReported version: %s%d.%d", is_es ? "ES" : "", vmajor, vminor);
 
     glGenBuffers(1, &opengl_vbo);
-    
+
     glBindBuffer(GL_ARRAY_BUFFER, opengl_vbo);
 
 #ifndef TARGET_ANDROID
@@ -716,6 +716,7 @@ static void gfx_opengl_init(void) {
         glBindVertexArray(opengl_vao);
     }
 #endif
+
     glDepthFunc(GL_LEQUAL);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
