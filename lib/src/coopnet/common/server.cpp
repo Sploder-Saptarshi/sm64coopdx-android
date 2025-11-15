@@ -71,9 +71,9 @@ bool Server::Begin(uint32_t aPort) {
 
     // set master socket to allow multiple connections ,
     // this is just a good habit, it will work without this
-    socklen_t opt;
-    if (setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, (char *)&opt, sizeof(opt)) != 0) {
-        LOG_ERROR("Master socket failed to setsockopt!");
+    int opt = 1;
+    if (setsockopt(mSocket, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        LOG_ERROR("Master socket failed to setsockopt(SO_REUSEADDR): %s", strerror(errno));
         return false;
     }
 
