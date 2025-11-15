@@ -335,7 +335,6 @@ jobs:
 
               if [ $install_status -eq 0 ] && [ $pkg_status -eq 0 ] && [ $ln_status -eq 0 ]; then
                 echo "Installation succeeded"
-                /entrypoint.sh ldconfig
                 break
               else
                 attempt=$((attempt + 1))
