@@ -323,9 +323,7 @@ jobs:
               set +e # Disable immediate exit on failure
               /entrypoint.sh apt-get install -y -o Dpkg::Options::="--force-confnew" openssl libc++ 
               install_status=$?
-              /entrypoint.sh pkg update
-              /entrypoint.sh pkg upgrade
-              /entrypoint.sh pkg install -y nodejs-lts git curl
+              /entrypoint.sh pkg install -y nodejs-lts git curl libcurl
               pkg_status=$?
 
               ln -sf ${PREFIX}/bin /__e/node20/bin
