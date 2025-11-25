@@ -297,6 +297,10 @@ static void sys_fatal_impl(const char *msg) {
 // we can just ask SDL for most of this shit if we have it
 #include <SDL2/SDL.h>
 
+#ifdef __ANDROID__
+#include <SDL2/SDL_system.h>
+#endif
+
 #include "platform.h"
 
 #ifdef __ANDROID__

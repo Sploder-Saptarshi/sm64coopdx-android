@@ -7,6 +7,7 @@
 
 #ifdef TARGET_ANDROID
 #include <sys/stat.h>
+#include <SDL2/SDL_system.h>
 #include "platform.h"
 #endif
 
@@ -493,7 +494,8 @@ int main(int argc, char *argv[]) {
     char gamedir[SYS_MAX_PATH] = { 0 };
     const char *basedir = get_gamedir();
     snprintf(gamedir, SYS_MAX_PATH, "%s/%s", basedir, ".nomedia"); // the `.nomedia` folder prevents media from beind detected in apps like the gallery
-    if (stat(gamedir, NULL) == -1) {
+    struct stat st;
+    if (stat(gamedir, &st) == -1) {
         mkdir(gamedir, 0770);
     }
     // TODO: some way to inhibit this on launch if the apk doesn't contain updated/differing files?
