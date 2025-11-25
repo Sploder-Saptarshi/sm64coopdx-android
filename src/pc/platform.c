@@ -297,13 +297,14 @@ static void sys_fatal_impl(const char *msg) {
 // we can just ask SDL for most of this shit if we have it
 #include <SDL2/SDL.h>
 
-#ifdef __ANDROID__
-#include <SDL2/SDL_system.h>
-#endif
-
 #include "platform.h"
 
 #ifdef __ANDROID__
+// Forward declarations for SDL Android functions
+extern const char* SDL_AndroidGetExternalStoragePath(void);
+extern const char* SDL_AndroidGetTopExternalStoragePath(void);
+extern SDL_bool SDL_AndroidRequestPermission(const char* permission);
+
 const char *get_gamedir(void) {
     SDL_bool privileged_write = SDL_FALSE, privileged_manage = SDL_FALSE;
     static char gamedir_unprivileged[SYS_MAX_PATH] = { 0 }, gamedir_privileged[SYS_MAX_PATH] = { 0 };
