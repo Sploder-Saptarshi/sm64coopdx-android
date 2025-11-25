@@ -1715,6 +1715,7 @@ $(ZIP_UNCOMPRESSED): $(EXE) $(APK_FILES)
   mkdir -p $(BUILD_DIR)/platform/android/android/lib/$(ARCH_APK)/ && \
 	cp $(PREFIX)/lib/libc++_shared.so $(BUILD_DIR)/platform/android/android/lib/$(ARCH_APK)/ && \
 	cp $(EXE) $(BUILD_DIR)/platform/android/android/lib/$(ARCH_APK)/ && \
+	cp -r $(BUILD_DIR)/platform/android/app/* $(BUILD_DIR)/platform/android/android/ && \
 	cd $(BUILD_DIR)/platform/android/android && \
 	zip -0 -r ../../../../../$@ ./* && \
 	cd - && \
