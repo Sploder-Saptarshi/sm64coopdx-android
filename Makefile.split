@@ -193,13 +193,7 @@ include $(BUILD_DIR)/level_rules.mk
 else
 $(BUILD_DIR)/level_rules.mk: levels/level_rules.mk levels/level_defines.h
 	@$(PRINT) "$(GREEN)Preprocessing level make rules: $(BLUE)$@ $(NO_COL)\n"
-	$(info $$CPPFLAGS is [${CPPFLAGS}])
-	$(info $$V is [${V}])
-	$(info $$CPP is [${CPP}])
-	$(info $$EXTRA_INCLUDES is [${EXTRA_INCLUDES}])
-	$(info $$VERSION_CFLAGS is [${VERSION_CFLAGS}])
-	$(V)$(CPP) $(CPPFLAGS) $(VERSION_CFLAGS) -I . $(EXTRA_INCLUDES) -o $@ $<
-
+	$(V)$(CPP) $(VERSION_CFLAGS) -I . $(EXTRA_INCLUDES) -o $@ $<
 include $(BUILD_DIR)/level_rules.mk
 endif
 endif

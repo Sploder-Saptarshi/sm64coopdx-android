@@ -32,7 +32,14 @@ bool ns_coopnet_query(QueryCallbackPtr callback, QueryFinishCallbackPtr finishCa
     gCoopNetCallbacks.OnLobbyListGot = callback;
     gCoopNetCallbacks.OnLobbyListFinish = finishCallback;
     if (coopnet_initialize() != COOPNET_OK) { return false; }
+#ifdef __ANDROID__
+    const char *game_name = (password[0] != '\0') ? "sm64coopdx" : GAME_NAME;
+    if (coopnet_lobby_list_get(game_name, password) != COOPNET_OK) {
+        return false;
+    }
+#else
     if (coopnet_lobby_list_get(GAME_NAME, password) != COOPNET_OK) { return false; }
+#endif
     return true;
 }
 
@@ -217,7 +224,12 @@ void ns_coopnet_update(void) {
                 LOG_INFO("Create lobby");
                 snprintf(gCoopNetPassword, 64, "%s", configPassword);
                 coopnet_populate_description();
+#ifdef __ANDROID__
+                const char *game_name = (gCoopNetPassword[0] != '\0') ? "sm64coopdx" : GAME_NAME;
+                coopnet_lobby_create(game_name, get_version(), configPlayerName, mode, (uint16_t)configAmountOfPlayers, gCoopNetPassword, sCoopNetDescription);
+#else
                 coopnet_lobby_create(GAME_NAME, get_version(), configPlayerName, mode, (uint16_t)configAmountOfPlayers, gCoopNetPassword, sCoopNetDescription);
+#endif
             }
         } else if (sNetworkType == NT_CLIENT) {
             LOG_INFO("Join lobby");

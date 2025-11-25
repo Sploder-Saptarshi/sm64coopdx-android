@@ -36,6 +36,13 @@ typedef struct {
     bool invertRightY;
 } ConfigStick;
 
+enum RefreshRateMode {
+    RRM_AUTO,
+    RRM_MANUAL,
+    RRM_UNLIMITED,
+    RRM_MAX
+};
+
 extern char configSaveNames[4][MAX_SAVE_NAME_STRING];
 
 // display settings
@@ -43,7 +50,8 @@ extern ConfigWindow configWindow;
 extern ConfigStick configStick;
 extern unsigned int configFiltering;
 extern bool         configShowFPS;
-extern bool         configUncappedFramerate;
+extern bool         configShowPing;
+extern enum RefreshRateMode configFramerateMode;
 extern unsigned int configFrameLimit;
 extern unsigned int configInterpolationMode;
 extern unsigned int configDrawDistance;
@@ -135,6 +143,7 @@ extern unsigned int configPlayerInteraction;
 extern unsigned int configPlayerKnockbackStrength;
 extern unsigned int configStayInLevelAfterStar;
 extern bool         configNametags;
+extern bool         configModDevMode;
 extern unsigned int configBouncyLevelBounds;
 extern bool         configSkipIntro;
 extern bool         configPauseAnywhere;
@@ -162,14 +171,13 @@ extern unsigned int configDjuiScale;
 // other
 extern unsigned int configRulesVersion;
 extern bool         configCompressOnStartup;
-#ifdef TOUCH_CONTROLS
-extern unsigned int configAndroidBiggerButtons;
-extern unsigned int configTouchControlRed;
-extern unsigned int configTouchControlGreen;
-extern unsigned int configTouchControlBlue;
-extern unsigned int configTouchControlAlpha;
-#endif
 extern bool         configSkipPackGeneration;
+#ifdef TOUCH_CONTROLS
+extern bool         configAutohideTouch;
+extern bool         configSlideTouch;
+extern bool         configPhantomTouch;
+extern bool         configSnapTouch;
+#endif
 
 // secrets
 extern bool configExCoopTheme;

@@ -25,6 +25,7 @@
 # include <SDL2/SDL.h>
 # ifdef USE_GLES
 #  include <SDL2/SDL_opengles2.h>
+#  include <GLES3/gl3.h>
 # else
 #  include <SDL2/SDL_opengl.h>
 # endif
@@ -67,9 +68,7 @@ static struct ShaderProgram shader_program_pool[CC_MAX_SHADERS];
 static uint8_t shader_program_pool_size = 0;
 static uint8_t shader_program_pool_index = 0;
 static GLuint opengl_vbo;
-#ifndef TARGET_ANDROID
 static GLuint opengl_vao;
-#endif
 
 static int tex_cache_size = 0;
 static int num_textures = 0;
@@ -247,6 +246,16 @@ static void append_formula(char *buf, size_t *len, uint8_t* cmd, bool do_single,
     }
 }
 
+#ifdef USE_GLES
+    #define ATTR "in"
+    #define VARYING_VS "out"
+    #define VARYING_FS "in"
+#else
+    #define ATTR "attribute"
+    #define VARYING_VS "varying"
+    #define VARYING_FS "varying"
+#endif
+
 static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorCombiner* cc) {
     struct CCFeatures ccf = { 0 };
     gfx_cc_get_features(cc, &ccf);
@@ -256,7 +265,11 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorC
     bool opt_texture_edge = cc->cm.texture_edge;
     bool opt_2cycle = cc->cm.use_2cycle;
     bool opt_light_map = cc->cm.light_map;
+#ifdef USE_GLES
+    bool opt_dither = false;
+#else
     bool opt_dither = cc->cm.use_dither;
+#endif
 
     char vs_buf[1024];
     char fs_buf[2048];
@@ -266,29 +279,29 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorC
 
     // Vertex shader
 #ifdef USE_GLES
-    append_line(vs_buf, &vs_len, "#version 100");
+    append_line(vs_buf, &vs_len, "#version 300 es");
 #else
     append_line(vs_buf, &vs_len, "#version 120");
 #endif
-    append_line(vs_buf, &vs_len, "attribute vec4 aVtxPos;");
+    append_line(vs_buf, &vs_len, ATTR " vec4 aVtxPos;");
     if (ccf.used_textures[0] || ccf.used_textures[1]) {
-        append_line(vs_buf, &vs_len, "attribute vec2 aTexCoord;");
-        append_line(vs_buf, &vs_len, "varying vec2 vTexCoord;");
+        append_line(vs_buf, &vs_len, ATTR " vec2 aTexCoord;");
+        append_line(vs_buf, &vs_len, VARYING_VS " vec2 vTexCoord;");
         num_floats += 2;
     }
     if (opt_fog) {
-        append_line(vs_buf, &vs_len, "attribute vec4 aFog;");
-        append_line(vs_buf, &vs_len, "varying vec4 vFog;");
+        append_line(vs_buf, &vs_len, ATTR " vec4 aFog;");
+        append_line(vs_buf, &vs_len, VARYING_VS " vec4 vFog;");
         num_floats += 4;
     }
     if (opt_light_map) {
-        append_line(vs_buf, &vs_len, "attribute vec2 aLightMap;");
-        append_line(vs_buf, &vs_len, "varying vec2 vLightMap;");
+        append_line(vs_buf, &vs_len, ATTR " vec2 aLightMap;");
+        append_line(vs_buf, &vs_len, VARYING_VS " vec2 vLightMap;");
         num_floats += 2;
     }
     for (int i = 0; i < ccf.num_inputs; i++) {
-        vs_len += sprintf(vs_buf + vs_len, "attribute vec%d aInput%d;\n", opt_alpha ? 4 : 3, i + 1);
-        vs_len += sprintf(vs_buf + vs_len, "varying vec%d vInput%d;\n", opt_alpha ? 4 : 3, i + 1);
+        vs_len += sprintf(vs_buf + vs_len, ATTR " vec%d aInput%d;\n", opt_alpha ? 4 : 3, i + 1);
+        vs_len += sprintf(vs_buf + vs_len, VARYING_VS " vec%d vInput%d;\n", opt_alpha ? 4 : 3, i + 1);
         num_floats += opt_alpha ? 4 : 3;
     }
     append_line(vs_buf, &vs_len, "void main() {");
@@ -309,23 +322,27 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorC
 
     // Fragment shader
 #ifdef USE_GLES
-    append_line(fs_buf, &fs_len, "#version 100");
+    append_line(fs_buf, &fs_len, "#version 300 es");
     append_line(fs_buf, &fs_len, "precision mediump float;");
 #else
     append_line(fs_buf, &fs_len, "#version 120");
 #endif
 
+#ifdef USE_GLES
+    append_line(fs_buf, &fs_len, "out vec4 fragColor;");
+#endif
+
     if (ccf.used_textures[0] || ccf.used_textures[1]) {
-        append_line(fs_buf, &fs_len, "varying vec2 vTexCoord;");
+        append_line(fs_buf, &fs_len, VARYING_FS " vec2 vTexCoord;");
     }
     if (opt_fog) {
-        append_line(fs_buf, &fs_len, "varying vec4 vFog;");
+        append_line(fs_buf, &fs_len, VARYING_FS " vec4 vFog;");
     }
     if (opt_light_map) {
-        append_line(fs_buf, &fs_len, "varying vec2 vLightMap;");
+        append_line(fs_buf, &fs_len, VARYING_FS " vec2 vLightMap;");
     }
     for (int i = 0; i < ccf.num_inputs; i++) {
-        fs_len += sprintf(fs_buf + fs_len, "varying vec%d vInput%d;\n", opt_alpha ? 4 : 3, i + 1);
+        fs_len += sprintf(fs_buf + fs_len, VARYING_FS " vec%d vInput%d;\n", opt_alpha ? 4 : 3, i + 1);
     }
     if (ccf.used_textures[0]) {
         append_line(fs_buf, &fs_len, "uniform sampler2D uTex0;");
@@ -338,11 +355,14 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorC
         append_line(fs_buf, &fs_len, "uniform bool uTex1Filter;");
     }
 
-    // 3 point texture filtering
-    // Original author: ArthurCarvalho
-    // Modified GLSL implementation by twinaphex, mupen64plus-libretro project.
-    if (ccf.used_textures[0] || ccf.used_textures[1]) {
+    // 3-point texture filtering macro
+#ifdef USE_GLES
+        append_line(fs_buf, &fs_len, "#define TEX_OFFSET(off) texture(tex, texCoord - (off)/texSize)");
+#else
         append_line(fs_buf, &fs_len, "#define TEX_OFFSET(off) texture2D(tex, texCoord - (off)/texSize)");
+#endif
+
+    if (ccf.used_textures[0] || ccf.used_textures[1]) {
         append_line(fs_buf, &fs_len, "vec4 filter3point(in sampler2D tex, in vec2 texCoord, in vec2 texSize) {");
         append_line(fs_buf, &fs_len, "    vec2 offset = fract(texCoord*texSize - vec2(0.5));");
         append_line(fs_buf, &fs_len, "    offset -= step(1.0, offset.x + offset.y);");
@@ -351,24 +371,26 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorC
         append_line(fs_buf, &fs_len, "    vec4 c2 = TEX_OFFSET(vec2(offset.x, offset.y - sign(offset.y)));");
         append_line(fs_buf, &fs_len, "    return c0 + abs(offset.x)*(c1-c0) + abs(offset.y)*(c2-c0);");
         append_line(fs_buf, &fs_len, "}");
-        append_line(fs_buf, &fs_len, "vec4 sampleTex(in sampler2D tex, in vec2 uv, in vec2 texSize, in bool dofilter, in int filter) {");
-        append_line(fs_buf, &fs_len, "    if (dofilter && filter == 2)");
+        append_line(fs_buf, &fs_len, "vec4 sampleTex(in sampler2D tex, in vec2 uv, in vec2 texSize, in bool dofilter, in int filterMode) {");
+        append_line(fs_buf, &fs_len, "    if (dofilter && filterMode == 2) {");
         append_line(fs_buf, &fs_len, "        return filter3point(tex, uv, texSize);");
-        append_line(fs_buf, &fs_len, "    else");
+#ifdef USE_GLES
+        append_line(fs_buf, &fs_len, "    } else {");
+        append_line(fs_buf, &fs_len, "        return texture(tex, uv);");
+#else
+        append_line(fs_buf, &fs_len, "    } else {");
         append_line(fs_buf, &fs_len, "        return texture2D(tex, uv);");
+#endif
+        append_line(fs_buf, &fs_len, "    }");
         append_line(fs_buf, &fs_len, "}");
     }
 
+
     if ((opt_alpha && opt_dither) || ccf.do_noise) {
         append_line(fs_buf, &fs_len, "uniform float uFrameCount;");
-
         append_line(fs_buf, &fs_len, "float random(in vec3 value) {");
         append_line(fs_buf, &fs_len, "    float random = dot(sin(value), vec3(12.9898, 78.233, 37.719));");
-#ifdef USE_GLES
-        append_line(fs_buf, &fs_len, "    return fract(sin(random) * 143.7585453);");
-#else
         append_line(fs_buf, &fs_len, "    return fract(sin(random) * 143758.5453);");
-#endif
         append_line(fs_buf, &fs_len, "}");
     }
 
@@ -377,7 +399,6 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorC
     }
 
     append_line(fs_buf, &fs_len, "uniform int uFilter;");
-
     append_line(fs_buf, &fs_len, "void main() {");
 
     if ((opt_alpha && opt_dither) || ccf.do_noise) {
@@ -434,11 +455,20 @@ static struct ShaderProgram *gfx_opengl_create_and_load_new_shader(struct ColorC
         append_line(fs_buf, &fs_len, "texel.a *= noise;");
     }
 
+#ifdef USE_GLES
+    if (opt_alpha) {
+        append_line(fs_buf, &fs_len, "fragColor = texel;");
+    } else {
+        append_line(fs_buf, &fs_len, "fragColor = vec4(texel, 1.0);");
+    }
+#else
     if (opt_alpha) {
         append_line(fs_buf, &fs_len, "gl_FragColor = texel;");
     } else {
         append_line(fs_buf, &fs_len, "gl_FragColor = vec4(texel, 1.0);");
     }
+#endif
+
     append_line(fs_buf, &fs_len, "}");
 
     vs_buf[vs_len] = '\0';
@@ -710,12 +740,10 @@ static void gfx_opengl_init(void) {
 
     glBindBuffer(GL_ARRAY_BUFFER, opengl_vbo);
 
-#ifndef TARGET_ANDROID
-    if (vmajor >= 3 && !is_es) {
+    if (vmajor >= 3) {
         glGenVertexArrays(1, &opengl_vao);
         glBindVertexArray(opengl_vao);
     }
-#endif
 
     glDepthFunc(GL_LEQUAL);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);

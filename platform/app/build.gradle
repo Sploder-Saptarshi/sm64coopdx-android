@@ -1,0 +1,95 @@
+def buildAsLibrary = project.hasProperty('BUILD_AS_LIBRARY');
+def buildAsApplication = !buildAsLibrary
+if (buildAsApplication) {
+    apply plugin: 'com.android.application'
+}
+else {
+    apply plugin: 'com.android.library'
+}
+
+android {
+    compileSdkVersion 33
+    defaultConfig {
+        if (buildAsApplication) {
+            applicationId "com.maniscat2.sm64coopdx"
+        }
+        multiDexEnabled false
+        minSdkVersion 24
+        targetSdkVersion 33
+        versionCode 41
+        versionName "1.4"
+        ndk {
+            moduleName = "app"
+            ldLibs "log"
+            debugSymbolLevel 'FULL'
+        }
+        externalNativeBuild {
+            ndkBuild {
+                arguments "-j10"
+                abiFilters 'arm64-v8a', 'x86_64'
+            }
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android.txt')
+        }
+        debug {
+            minifyEnabled false
+        }
+    }
+    applicationVariants.all { variant ->
+        tasks["merge${variant.name.capitalize()}Assets"]
+            .dependsOn("externalNativeBuild${variant.name.capitalize()}")
+    }
+    if (buildAsApplication) {
+        android.applicationVariants.all { variant ->
+            def variantName = variant.name.capitalize()
+            def mergeAssetsTask = tasks.named("merge${variantName}Assets")
+            def copyTask = tasks.register("copySelectedAssetsFor${variantName}", Copy) {
+                ["lang", "mods", "dynos", "palettes"].each { fname ->
+                    def f = file("../../${fname}")
+                    if (f.exists()) {
+                        from(f) { into(fname) }
+                    }
+                }
+                into(mergeAssetsTask.get().outputDir)
+            }
+            mergeAssetsTask.configure {
+                dependsOn(copyTask)
+            }
+        }
+    }
+    namespace 'com.maniscat2.sm64coopdx'
+    lint {
+        abortOnError false
+    }
+    if (!project.hasProperty('EXCLUDE_NATIVE_LIBS')) {
+        sourceSets.main {
+            jniLibs.srcDir 'libs'
+        }
+        externalNativeBuild {
+            ndkBuild {
+                path 'jni/Android.mk'
+            }
+        }
+    }
+
+    if (buildAsLibrary) {
+        libraryVariants.all { variant ->
+            variant.outputs.each { output ->
+                def outputFile = output.outputFile
+                if (outputFile != null && outputFile.name.endsWith(".aar")) {
+                    def fileName = "com.maniscat2.sm64coopdx.aar";
+                    output.outputFile = new File(outputFile.parent, fileName);
+                }
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation 'org.jetbrains:annotations:15.0'
+}

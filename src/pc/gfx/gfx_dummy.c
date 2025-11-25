@@ -48,6 +48,11 @@ static void gfx_dummy_wm_set_keyboard_callbacks(UNUSED kb_callback_t on_key_down
                                                 UNUSED void (*on_text_input)(char*), UNUSED void (*on_text_editing)(char*, int)) {
 }
 
+#ifdef TOUCH_CONTROLS
+static void gfx_dummy_wm_set_touchscreen_callbacks(UNUSED void (*down)(void* event), UNUSED void (*motion)(void* event), UNUSED void (*up)(void* event)) {
+}
+#endif
+
 static void gfx_dummy_wm_set_scroll_callback(UNUSED void (*on_scroll)(float, float)) {
 }
 
@@ -198,8 +203,8 @@ static void gfx_dummy_renderer_shutdown(void) {
 struct GfxWindowManagerAPI gfx_dummy_wm_api = {
     gfx_dummy_wm_init,
     gfx_dummy_wm_set_keyboard_callbacks,
-#ifdef TOUCH_CONTROLS // fix compilation in android
-    gfx_sdl_set_touchscreen_callbacks,
+#ifdef TOUCH_CONTROLS
+    gfx_dummy_wm_set_touchscreen_callbacks,
 #endif
     gfx_dummy_wm_set_scroll_callback,
     gfx_dummy_wm_main_loop,

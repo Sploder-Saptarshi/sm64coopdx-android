@@ -133,34 +133,6 @@ ALIGNED8 const u8 texture_touch_console_pressed[] = {
 #include "textures/touchcontrols/touch_button_console_pressed.rgba16.inc.c"
 };
 
-// Editor Buttons
-ALIGNED8 const u8 texture_touch_confirm[] = {
-#include "textures/touchcontrols/touch_button_confirm.rgba16.inc.c"
-};
-ALIGNED8 const u8 texture_touch_confirm_pressed[] = {
-#include "textures/touchcontrols/touch_button_confirm_pressed.rgba16.inc.c"
-};
-ALIGNED8 const u8 texture_touch_discard[] = {
-#include "textures/touchcontrols/touch_button_discard.rgba16.inc.c"
-};
-ALIGNED8 const u8 texture_touch_discard_pressed[] = {
-#include "textures/touchcontrols/touch_button_discard_pressed.rgba16.inc.c"
-};
-ALIGNED8 const u8 texture_touch_reset[] = {
-#include "textures/touchcontrols/touch_button_reset.rgba16.inc.c"
-};
-ALIGNED8 const u8 texture_touch_reset_pressed[] = {
-#include "textures/touchcontrols/touch_button_reset_pressed.rgba16.inc.c"
-};
-ALIGNED8 const u8 texture_touch_snap[] = {
-#include "textures/touchcontrols/touch_button_snap.rgba16.inc.c"
-};
-ALIGNED8 const u8 texture_touch_snap_pressed[] = {
-#include "textures/touchcontrols/touch_button_snap_pressed.rgba16.inc.c"
-};
-ALIGNED8 const u8 texture_touch_trash[] = {
-#include "textures/touchcontrols/touch_trash.rgba16.inc.c"
-};
 const Texture *const touch_textures[TOUCH_TEXTURE_COUNT] = {
     texture_touch_joystick,
     texture_touch_joystick_base,
@@ -202,14 +174,5 @@ const Texture *const touch_textures[TOUCH_TEXTURE_COUNT] = {
     texture_touch_playerlist_pressed,
     texture_touch_console,
     texture_touch_console_pressed,
-    texture_touch_confirm,
-    texture_touch_confirm_pressed,
-    texture_touch_discard,
-    texture_touch_discard_pressed,
-    texture_touch_reset,
-    texture_touch_reset_pressed,
-    texture_touch_snap,
-    texture_touch_snap_pressed,
-    texture_touch_trash,
 }; 
 #endif

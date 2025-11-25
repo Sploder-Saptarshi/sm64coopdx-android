@@ -40,6 +40,7 @@
 #include "pc/controller/controller_keyboard.h"
 #ifdef TOUCH_CONTROLS
 #include "pc/controller/controller_touchscreen.h"
+#include "pc/djui/djui_interactable.h"
 #endif
 #include "pc/controller/controller_sdl.h"
 #include "pc/controller/controller_bind_mapping.h"
@@ -133,7 +134,7 @@ static void gfx_sdl_init(const char *window_title) {
     SDL_StartTextInput();
 #endif
 
-#ifdef TARGET_ANDROID
+#ifdef __ANDROID__
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight");
 #endif
 
@@ -148,7 +149,7 @@ static void gfx_sdl_init(const char *window_title) {
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
 
 #ifdef USE_GLES
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 2);  // These attributes allow for hardware acceleration on RPis.
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
 #endif
@@ -331,7 +332,7 @@ void (*on_all_keys_up)(void), void (*on_text_input)(char*), void (*on_text_editi
 }
 
 #ifdef TOUCH_CONTROLS
-void gfx_sdl_set_touchscreen_callbacks(void (*down)(void* event), void (*motion)(void* event), void (*up)(void* event)) {
+static void gfx_sdl_set_touchscreen_callbacks(void (*down)(void* event), void (*motion)(void* event), void (*up)(void* event)) {
     touch_down_callback = down;
     touch_motion_callback = motion;
     touch_up_callback = up;

@@ -33,6 +33,9 @@ enum ConfigOptionType {
     CONFIG_TYPE_UINT,
     CONFIG_TYPE_FLOAT,
     CONFIG_TYPE_BIND,
+#ifdef TOUCH_CONTROLS
+    CONFIG_TYPE_TOUCH,
+#endif
     CONFIG_TYPE_STRING,
     CONFIG_TYPE_U64,
     CONFIG_TYPE_COLOR,
@@ -45,6 +48,9 @@ struct ConfigOption {
         bool *boolValue;
         unsigned int *uintValue;
         float* floatValue;
+#ifdef TOUCH_CONTROLS
+        ConfigControlElement *touchValues;
+#endif
         char* stringValue;
         u64* u64Value;
         u8 (*colorValue)[3];
@@ -91,7 +97,8 @@ ConfigStick configStick = { 0 };
 // display settings
 unsigned int configFiltering                      = 2; // 0 = Nearest, 1 = Bilinear, 2 = Trilinear
 bool         configShowFPS                        = false;
-bool         configUncappedFramerate              = true;
+bool         configShowPing                       = false;
+enum RefreshRateMode configFramerateMode          = RRM_AUTO;
 unsigned int configFrameLimit                     = 60;
 unsigned int configInterpolationMode              = 1;
 unsigned int configDrawDistance                   = 4;
@@ -195,6 +202,7 @@ unsigned int configPlayerInteraction              = 1;
 unsigned int configPlayerKnockbackStrength        = 25;
 unsigned int configStayInLevelAfterStar           = 0;
 bool         configNametags                       = true;
+bool         configModDevMode                     = false;
 unsigned int configBouncyLevelBounds              = 0;
 bool         configSkipIntro                      = 0;
 bool         configPauseAnywhere                  = false;
@@ -223,22 +231,20 @@ bool         configDjuiThemeCenter                = true;
 bool         configDjuiThemeGradients             = true;
 unsigned int configDjuiThemeFont                  = FONT_NORMAL;
 #ifdef __ANDROID__
-unsigned int configDjuiScale                      = 2;
+unsigned int configDjuiScale                      = 3;
 #else
 unsigned int configDjuiScale                      = 0;
 #endif
 // other
 unsigned int configRulesVersion                   = 0;
 bool         configCompressOnStartup              = false;
-#ifdef TOUCH_CONTROLS
-unsigned int configAndroidBiggerButtons           = 1;
-unsigned int configTouchControlRed                = 255;
-unsigned int configTouchControlGreen              = 255;
-unsigned int configTouchControlBlue               = 255;
-unsigned int configTouchControlAlpha              = 255;
-#endif
 bool         configSkipPackGeneration             = false;
-
+#ifdef TOUCH_CONTROLS
+bool         configAutohideTouch                  = false;
+bool         configSlideTouch                     = true;
+bool         configPhantomTouch                   = false;
+bool         configSnapTouch                      = false;
+#endif
 // secrets
 bool configExCoopTheme = false;
 
@@ -256,7 +262,8 @@ static const struct ConfigOption options[] = {
     // display settings
     {.name = "texture_filtering",              .type = CONFIG_TYPE_UINT, .uintValue = &configFiltering},
     {.name = "show_fps",                       .type = CONFIG_TYPE_BOOL, .boolValue = &configShowFPS},
-    {.name = "uncapped_framerate",             .type = CONFIG_TYPE_BOOL, .boolValue = &configUncappedFramerate},
+    {.name = "show_ping",                      .type = CONFIG_TYPE_BOOL, .boolValue = &configShowPing},
+    {.name = "framerate_mode",                 .type = CONFIG_TYPE_UINT, .uintValue = &configFramerateMode},
     {.name = "frame_limit",                    .type = CONFIG_TYPE_UINT, .uintValue = &configFrameLimit},
     {.name = "interpolation_mode",             .type = CONFIG_TYPE_UINT, .uintValue = &configInterpolationMode},
     {.name = "coop_draw_distance",             .type = CONFIG_TYPE_UINT, .uintValue = &configDrawDistance},
@@ -367,6 +374,7 @@ static const struct ConfigOption options[] = {
     {.name = "coop_player_knockback_strength", .type = CONFIG_TYPE_UINT,   .uintValue   = &configPlayerKnockbackStrength},
     {.name = "coop_stay_in_level_after_star",  .type = CONFIG_TYPE_UINT,   .uintValue   = &configStayInLevelAfterStar},
     {.name = "coop_nametags",                  .type = CONFIG_TYPE_BOOL,   .boolValue   = &configNametags},
+    {.name = "coop_mod_dev_mode",              .type = CONFIG_TYPE_BOOL,   .boolValue   = &configModDevMode},
     {.name = "coop_bouncy_bounds",             .type = CONFIG_TYPE_UINT,   .uintValue   = &configBouncyLevelBounds},
     {.name = "skip_intro",                     .type = CONFIG_TYPE_BOOL,   .boolValue   = &configSkipIntro},
     {.name = "pause_anywhere",                 .type = CONFIG_TYPE_BOOL,   .boolValue   = &configPauseAnywhere},
@@ -379,94 +387,32 @@ static const struct ConfigOption options[] = {
     {.name = "disable_popups",                 .type = CONFIG_TYPE_BOOL,   .boolValue   = &configDisablePopups},
     {.name = "language",                       .type = CONFIG_TYPE_STRING, .stringValue = (char*)&configLanguage, .maxStringLength = MAX_CONFIG_STRING},
 #ifdef TOUCH_CONTROLS
-    {.name = "touch_stick_x",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_STICK].x},
-    {.name = "touch_stick_y",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_STICK].y},
-    {.name = "touch_stick_size",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_STICK].size},
-    {.name = "touch_stick_anchor",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_STICK].anchor},
-    {.name = "touch_mouse_x",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_MOUSE].x},
-    {.name = "touch_mouse_y",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_MOUSE].y},
-    {.name = "touch_mouse_size",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_MOUSE].size},
-    {.name = "touch_mouse_anchor",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_MOUSE].anchor},
-    {.name = "touch_a_x",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_A].x},
-    {.name = "touch_a_y",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_A].y},
-    {.name = "touch_a_size",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_A].size},
-    {.name = "touch_a_anchor",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_A].anchor},
-    {.name = "touch_b_x",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_B].x},
-    {.name = "touch_b_y",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_B].y},
-    {.name = "touch_b_size",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_B].size},
-    {.name = "touch_b_anchor",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_B].anchor},
-    {.name = "touch_x_x",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_X].x},
-    {.name = "touch_x_y",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_X].y},
-    {.name = "touch_x_size",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_X].size},
-    {.name = "touch_x_anchor",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_X].anchor},
-    {.name = "touch_y_x",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_Y].x},
-    {.name = "touch_y_y",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_Y].y},
-    {.name = "touch_y_size",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_Y].size},
-    {.name = "touch_y_anchor",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_Y].anchor},
-    {.name = "touch_start_x",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_START].x},
-    {.name = "touch_start_y",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_START].y},
-    {.name = "touch_start_size",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_START].size},
-    {.name = "touch_start_anchor",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_START].anchor},
-    {.name = "touch_l_x",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_L].x},
-    {.name = "touch_l_y",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_L].y},
-    {.name = "touch_l_size",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_L].size},
-    {.name = "touch_l_anchor",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_L].anchor},
-    {.name = "touch_r_x",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_R].x},
-    {.name = "touch_r_y",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_R].y},
-    {.name = "touch_r_size",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_R].size},
-    {.name = "touch_r_anchor",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_R].anchor},
-    {.name = "touch_z_x",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_Z].x},
-    {.name = "touch_z_y",                .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_Z].y},
-    {.name = "touch_z_size",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_Z].size},
-    {.name = "touch_z_anchor",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_Z].anchor},
-    {.name = "touch_cup_x",              .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CUP].x},
-    {.name = "touch_cup_y",              .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CUP].y},
-    {.name = "touch_cup_size",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CUP].size},
-    {.name = "touch_cup_anchor",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CUP].anchor},
-    {.name = "touch_cdown_x",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CDOWN].x},
-    {.name = "touch_cdown_y",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CDOWN].y},
-    {.name = "touch_cdown_size",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CDOWN].size},
-    {.name = "touch_cdown_anchor",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CDOWN].anchor},
-    {.name = "touch_cleft_x",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CLEFT].x},
-    {.name = "touch_cleft_y",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CLEFT].y},
-    {.name = "touch_cleft_size",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CLEFT].size},
-    {.name = "touch_cleft_anchor",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CLEFT].anchor},
-    {.name = "touch_cright_x",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CRIGHT].x},
-    {.name = "touch_cright_y",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CRIGHT].y},
-    {.name = "touch_cright_size",        .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CRIGHT].size},
-    {.name = "touch_cright_anchor",      .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CRIGHT].anchor},
-    {.name = "touch_chat_x",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CHAT].x},
-    {.name = "touch_chat_y",             .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CHAT].y},
-    {.name = "touch_chat_size",          .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CHAT].size},
-    {.name = "touch_chat_anchor",        .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CHAT].anchor},
-    {.name = "touch_playerlist_x",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_PLAYERLIST].x},
-    {.name = "touch_playerlist_y",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_PLAYERLIST].y},
-    {.name = "touch_playerlist_size",    .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_PLAYERLIST].size},
-    {.name = "touch_playerlist_anchor",  .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_PLAYERLIST].anchor},
-    {.name = "touch_dup_x",              .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DUP].x},
-    {.name = "touch_dup_y",              .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DUP].y},
-    {.name = "touch_dup_size",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DUP].size},
-    {.name = "touch_dup_anchor",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DUP].anchor},
-    {.name = "touch_ddown_x",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DDOWN].x},
-    {.name = "touch_ddown_y",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DDOWN].y},
-    {.name = "touch_ddown_size",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DDOWN].size},
-    {.name = "touch_ddown_anchor",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DDOWN].anchor},
-    {.name = "touch_dleft_x",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DLEFT].x},
-    {.name = "touch_dleft_y",            .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DLEFT].y},
-    {.name = "touch_dleft_size",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DLEFT].size},
-    {.name = "touch_dleft_anchor",       .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DLEFT].anchor},
-    {.name = "touch_dright_x",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DRIGHT].x},
-    {.name = "touch_dright_y",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DRIGHT].y},
-    {.name = "touch_dright_size",        .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DRIGHT].size},
-    {.name = "touch_dright_anchor",      .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_DRIGHT].anchor},
-    {.name = "touch_lua_x",              .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CONSOLE].x},
-    {.name = "touch_lua_y",              .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CONSOLE].y},
-    {.name = "touch_lua_size",           .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CONSOLE].size},
-    {.name = "touch_lua_anchor",         .type = CONFIG_TYPE_BIND, .uintValue = configControlElements[TOUCH_CONSOLE].anchor},
-    {.name = "touch_autohide",           .type = CONFIG_TYPE_BOOL, .boolValue = &configAutohideTouch},
-    {.name = "touch_slide",              .type = CONFIG_TYPE_BOOL, .boolValue = &configSlideTouch},
-    {.name = "touch_phantom",            .type = CONFIG_TYPE_BOOL, .boolValue = &configPhantomTouch},
-    {.name = "touch_snap",               .type = CONFIG_TYPE_BOOL, .boolValue = &configElementSnap},
+    // touch settings
+    {.name = "touch_stick",                    .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_STICK]},
+    {.name = "touch_mouse",                    .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_MOUSE]},
+    {.name = "touch_a",                        .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_A]},
+    {.name = "touch_b",                        .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_B]},
+    {.name = "touch_x",                        .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_X]},
+    {.name = "touch_y",                        .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_Y]},
+    {.name = "touch_start",                    .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_START]},
+    {.name = "touch_l",                        .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_L]},
+    {.name = "touch_r",                        .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_R]},
+    {.name = "touch_z",                        .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_Z]},
+    {.name = "touch_cup",                      .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_CUP]},
+    {.name = "touch_cdown",                    .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_CDOWN]},
+    {.name = "touch_cleft",                    .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_CLEFT]},
+    {.name = "touch_cright",                   .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_CRIGHT]},
+    {.name = "touch_chat",                     .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_CHAT]},
+    {.name = "touch_playerlist",               .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_PLAYERLIST]},
+    {.name = "touch_dup",                      .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_DUP]},
+    {.name = "touch_ddown",                    .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_DDOWN]},
+    {.name = "touch_dleft",                    .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_DLEFT]},
+    {.name = "touch_dright",                   .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_DRIGHT]},
+    {.name = "touch_console",                  .type = CONFIG_TYPE_TOUCH,  .touchValues = &configControlElements[TOUCH_CONSOLE]},
+    {.name = "touch_autohide",                 .type = CONFIG_TYPE_BOOL,   .boolValue   = &configAutohideTouch},
+    {.name = "touch_slide",                    .type = CONFIG_TYPE_BOOL,   .boolValue   = &configSlideTouch},
+    {.name = "touch_phantom",                  .type = CONFIG_TYPE_BOOL,   .boolValue   = &configPhantomTouch},
+    {.name = "touch_snap",                     .type = CONFIG_TYPE_BOOL,   .boolValue   = &configSnapTouch},
 #endif
     {.name = "force_4by3",                     .type = CONFIG_TYPE_BOOL,   .boolValue   = &configForce4By3},
     {.name = "dynos_local_player_model_only",  .type = CONFIG_TYPE_BOOL,   .boolValue   = &configDynosLocalPlayerModelOnly},
@@ -484,14 +430,6 @@ static const struct ConfigOption options[] = {
     // other
     {.name = "rules_version",                  .type = CONFIG_TYPE_UINT,   .uintValue   = &configRulesVersion},
     {.name = "compress_on_startup",            .type = CONFIG_TYPE_BOOL,   .boolValue   = &configCompressOnStartup},
-    {.name = "skip_pack_generation",           .type = CONFIG_TYPE_BOOL,   .boolValue   = &configSkipPackGeneration},
-#ifdef TOUCH_CONTROLS
-    {.name = "android_touch_scale",            .type = CONFIG_TYPE_UINT,   .uintValue   = &configAndroidBiggerButtons},
-    {.name = "android_touch_red",              .type = CONFIG_TYPE_UINT,   .uintValue   = &configTouchControlRed},
-    {.name = "android_touch_green",            .type = CONFIG_TYPE_UINT,   .uintValue   = &configTouchControlGreen},
-    {.name = "android_touch_blue",             .type = CONFIG_TYPE_UINT,   .uintValue   = &configTouchControlBlue},
-    {.name = "android_touch_opacity",          .type = CONFIG_TYPE_UINT,   .uintValue   = &configTouchControlAlpha},
-#endif
     {.name = "skip_pack_generation",           .type = CONFIG_TYPE_BOOL,   .boolValue   = &configSkipPackGeneration},
 };
 
@@ -862,6 +800,20 @@ static void configfile_load_internal(const char *filename, bool* error) {
                             for (int i = 0; i < MAX_BINDS && i < numTokens - 1; ++i)
                                 sscanf(tokens[i + 1], "%x", option->uintValue + i);
                             break;
+#ifdef TOUCH_CONTROLS
+                        case CONFIG_TYPE_TOUCH:
+                            sscanf(tokens[1], "%04x", &option->touchValues->x);
+                            sscanf(tokens[2], "%04x", &option->touchValues->y);
+                            sscanf(tokens[3], "%04x", &option->touchValues->size);
+
+                            sscanf(tokens[4], "%x",   &option->touchValues->anchor);
+
+                            sscanf(tokens[5], "%02x", &option->touchValues->r);
+                            sscanf(tokens[6], "%02x", &option->touchValues->g);
+                            sscanf(tokens[7], "%02x", &option->touchValues->b);
+                            sscanf(tokens[8], "%02x", &option->touchValues->a);
+                            break;
+#endif
                         case CONFIG_TYPE_FLOAT:
                             sscanf(tokens[1], "%f", option->floatValue);
                             break;
@@ -905,6 +857,7 @@ NEXT_OPTION:
 
     fs_close(file);
 
+    if (configFramerateMode < 0 || configFramerateMode > RRM_MAX) { configFramerateMode = 0; }
     if (configFrameLimit < 30)   { configFrameLimit = 30; }
     if (configFrameLimit > 3000) { configFrameLimit = 3000; }
 
@@ -978,6 +931,11 @@ static void configfile_save_option(FILE *file, const struct ConfigOption *option
                 fprintf(file, "%04x ", option->uintValue[i]);
             fprintf(file, "\n");
             break;
+#ifdef TOUCH_CONTROLS
+        case CONFIG_TYPE_TOUCH:
+            fprintf(file, "%s %04x %04x %04x %x %02x %02x %02x %02x\n", option->name, option->touchValues->x, option->touchValues->y, option->touchValues->size, option->touchValues->anchor, option->touchValues->r, option->touchValues->g, option->touchValues->b, option->touchValues->a);
+            break;
+#endif
         case CONFIG_TYPE_STRING:
             fprintf(file, "%s %s\n", option->name, option->stringValue);
             break;
