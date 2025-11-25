@@ -7,8 +7,10 @@
 
 #ifdef TARGET_ANDROID
 #include <sys/stat.h>
-#include <SDL2/SDL_system.h>
 #include "platform.h"
+
+// Forward declaration for SDL Android function
+extern void SDL_AndroidCopyAssetFilesToDir(const char* directory);
 #endif
 
 #include "sm64.h"
