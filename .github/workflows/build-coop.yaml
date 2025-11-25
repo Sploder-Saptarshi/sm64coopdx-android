@@ -228,7 +228,7 @@ jobs:
 
     build-macos-intel:
         if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[build]') }}
-        runs-on: macos-13
+        runs-on: macos-15-intel
         steps:
             - name: Checkout repository
               uses: actions/checkout@v4
@@ -441,6 +441,7 @@ jobs:
           run: |
             mkdir platform/android/android/assets/
             cp -r {mods,lang,palettes,dynos} platform/android/android/assets/
+            cp -r platform/android/app/* platform/android/android/
             pushd platform/android/android/
             zip -0 -r ../../../sm64coopdx_unaligned.zip ./*
             popd
